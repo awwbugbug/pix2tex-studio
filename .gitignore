@@ -1,0 +1,18 @@
+# Local development runtime cloned from Conda. Never commit it.
+/runtime/pix2tex_env/
+/runtime/build_env/
+/runtime/build_tools/
+
+# Local environment-clone and diagnostic logs.
+/.logs/
+
+# Local application state and build outputs.
+/.cache/
+/build/
+/dist/
+/acceptance/private/
+/release-evidence/
+/installer/output/
+*.py[cod]
+*.egg-info/
+__pycache__/

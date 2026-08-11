@@ -1,0 +1,405 @@
+[
+  {
+    "name": "albucore",
+    "version": "0.0.23",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "albumentations",
+    "version": "1.4.24",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "annotated-types",
+    "version": "0.7.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "antlr4-python3-runtime",
+    "version": "4.7.2",
+    "files": [
+      "METADATA-LICENSE.txt"
+    ]
+  },
+  {
+    "name": "certifi",
+    "version": "2025.11.12",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "charset-normalizer",
+    "version": "3.4.4",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "colorama",
+    "version": "0.4.6",
+    "files": [
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "einops",
+    "version": "0.8.1",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "entmax",
+    "version": "1.3",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "filelock",
+    "version": "3.20.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "fsspec",
+    "version": "2025.10.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "huggingface-hub",
+    "version": "0.36.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "idna",
+    "version": "3.11",
+    "files": [
+      "LICENSE.md"
+    ]
+  },
+  {
+    "name": "Jinja2",
+    "version": "3.1.6",
+    "files": [
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "latex2sympy2",
+    "version": "1.9.1",
+    "files": [
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "MarkupSafe",
+    "version": "3.0.3",
+    "files": [
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "mpmath",
+    "version": "1.3.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "munch",
+    "version": "4.0.0",
+    "files": [
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "networkx",
+    "version": "3.4.2",
+    "files": [
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "numpy",
+    "version": "2.2.6",
+    "files": [
+      "LICENSE",
+      "LICENSE.md",
+      "LICENSE.txt",
+      "random__LICENSE.txt"
+    ]
+  },
+  {
+    "name": "opencv-python-headless",
+    "version": "4.12.0.88",
+    "files": [
+      "LICENSE-3RD-PARTY.txt",
+      "LICENSE.txt",
+      "opencv_python_headless-4.12.0.88.dist-info__LICENSE-3RD-PARTY.txt",
+      "opencv_python_headless-4.12.0.88.dist-info__LICENSE.txt"
+    ]
+  },
+  {
+    "name": "packaging",
+    "version": "25.0",
+    "files": [
+      "LICENSE",
+      "LICENSE.APACHE",
+      "LICENSE.BSD"
+    ]
+  },
+  {
+    "name": "pandas",
+    "version": "2.3.3",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "pillow",
+    "version": "12.0.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "pix2tex",
+    "version": "0.1.4",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "pydantic",
+    "version": "2.12.5",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "pydantic_core",
+    "version": "2.41.5",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "pyreadline3",
+    "version": "3.5.4",
+    "files": [
+      "LICENSE.md"
+    ]
+  },
+  {
+    "name": "PySide6",
+    "version": "6.10.1",
+    "files": [
+      "GPL-3.0-only.txt",
+      "LGPL-3.0-only.txt",
+      "LicenseRef-Qt-Commercial.txt"
+    ]
+  },
+  {
+    "name": "PySide6_Addons",
+    "version": "6.10.1",
+    "files": [
+      "LicenseRef-Qt-Commercial.txt"
+    ]
+  },
+  {
+    "name": "PySide6_Essentials",
+    "version": "6.10.1",
+    "files": [
+      "LicenseRef-Qt-Commercial.txt"
+    ]
+  },
+  {
+    "name": "python-dateutil",
+    "version": "2.9.0.post0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "pytz",
+    "version": "2025.2",
+    "files": [
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "PyYAML",
+    "version": "6.0.3",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "regex",
+    "version": "2025.11.3",
+    "files": [
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "requests",
+    "version": "2.32.5",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "safetensors",
+    "version": "0.7.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "scipy",
+    "version": "1.15.3",
+    "files": [
+      "COPYING",
+      "COPYING.txt",
+      "LICENSE",
+      "LICENSE.md",
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "shiboken6",
+    "version": "6.10.1",
+    "files": [
+      "LicenseRef-Qt-Commercial.txt"
+    ]
+  },
+  {
+    "name": "simsimd",
+    "version": "6.5.3",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "six",
+    "version": "1.17.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "stringzilla",
+    "version": "4.3.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "sympy",
+    "version": "1.14.0",
+    "files": [
+      "LICENSE",
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "timm",
+    "version": "0.5.4",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "tokenizers",
+    "version": "0.22.1",
+    "files": [
+      "METADATA-LICENSE.txt"
+    ]
+  },
+  {
+    "name": "torch",
+    "version": "2.9.1+cpu",
+    "files": [
+      "LICENSE",
+      "NOTICE"
+    ]
+  },
+  {
+    "name": "torchvision",
+    "version": "0.24.1+cpu",
+    "files": [
+      "LICENSE",
+      "torchvision-0.24.1+cpu.dist-info__LICENSE"
+    ]
+  },
+  {
+    "name": "tqdm",
+    "version": "4.67.1",
+    "files": [
+      "METADATA-LICENSE.txt"
+    ]
+  },
+  {
+    "name": "transformers",
+    "version": "4.57.3",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "typing_extensions",
+    "version": "4.15.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "typing-inspection",
+    "version": "0.4.2",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "tzdata",
+    "version": "2025.2",
+    "files": [
+      "LICENSE",
+      "LICENSE_APACHE"
+    ]
+  },
+  {
+    "name": "urllib3",
+    "version": "2.5.0",
+    "files": [
+      "LICENSE.txt"
+    ]
+  },
+  {
+    "name": "x-transformers",
+    "version": "0.15.0",
+    "files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "MathJax",
+    "version": "2.7.5",
+    "files": [
+      "Apache-2.0.txt"
+    ]
+  }
+]

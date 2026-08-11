@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pix2tex-studio"
+version = "1.0.0rc1"
+description = "A local-first Windows desktop shell for pix2tex."
+requires-python = ">=3.10,<3.11"
+dependencies = [
+  "pix2tex==0.1.4",
+  "PySide6==6.10.1",
+  "latex2sympy2==1.9.1",
+]
+
+[project.scripts]
+pix2tex-studio = "pix2tex_app.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pix2tex_app = ["ui/qml/*.qml", "ui/qml/qmldir", "ui/qml/components/*.qml", "ui/assets/*.js"]

@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pix2Tex UI Layout Wireframe</title>
+  <style>
+    :root {
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      color: #1f1f1f;
+      background: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    button, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    /* The browser viewport represents only the app's client area.
+       A Windows native title bar / DWM frame is intentionally not simulated here. */
+    .app {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-rows: 64px minmax(0, 1fr) 34px;
+      background: #fff;
+    }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid #aaa;
+    }
+
+    .identity,
+    .header-actions,
+    .input-options,
+    .workspace-toolbar,
+    .result-footer,
+    .statusbar,
+    .drawer-header {
+      display: flex;
+      align-items: center;
+    }
+
+    .identity { gap: 12px; }
+
+    .app-mark {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #555;
+    }
+
+    .identity strong { font-size: 14px; }
+    .identity span { color: #777; font-size: 12px; }
+
+    .header-actions { gap: 8px; }
+
+    button {
+      min-height: 34px;
+      padding: 0 13px;
+      border: 1px solid #777;
+      background: #fff;
+      color: #222;
+    }
+
+    button:hover { background: #eee; }
+    button:active { background: #ddd; }
+
+    .primary {
+      border-color: #222;
+      background: #222;
+      color: #fff;
+    }
+
+    .primary:hover { background: #444; }
+    .text-button { border-color: transparent; }
+
+    .app-main {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .empty-state {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 40px;
+    }
+
+    .empty-content {
+      width: min(640px, 80vw);
+      text-align: center;
+    }
+
+    .empty-symbol {
+      width: 72px;
+      height: 72px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 28px;
+      border: 1px dashed #777;
+      font-size: 28px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    .empty-content > p {
+      margin: 12px 0 30px;
+      color: #666;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .capture-main {
+      min-width: 188px;
+      min-height: 46px;
+      font-weight: 600;
+    }
+
+    .input-options {
+      justify-content: center;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .shortcut {
+      margin-top: 22px;
+      color: #888;
+      font-size: 11px;
+    }
+
+    .workspace {
+      width: 100%;
+      height: 100%;
+      display: none;
+      grid-template-rows: 54px minmax(0, 1fr);
+      padding: 22px 24px 18px;
+    }
+
+    .workspace.visible { display: grid; }
+
+    .workspace-toolbar {
+      justify-content: space-between;
+      border: 1px solid #999;
+      border-bottom: 0;
+      padding: 0 14px;
+    }
+
+    .workspace-toolbar strong { font-size: 13px; }
+    .workspace-toolbar small { margin-left: 10px; color: #777; }
+
+    .toolbar-actions { display: flex; gap: 8px; }
+
+    .work-area {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(320px, 44%) minmax(420px, 56%);
+      border: 1px solid #999;
+    }
+
+    .source-pane,
+    .result-pane {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 44px minmax(0, 1fr);
+    }
+
+    .source-pane { border-right: 1px solid #999; }
+
+    .pane-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 15px;
+      border-bottom: 1px solid #bbb;
+      font-size: 12px;
+    }
+
+    .pane-title span:last-child { color: #777; font-size: 11px; }
+
+    .source-body {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #f4f4f4;
+    }
+
+    .source-placeholder {
+      width: min(90%, 540px);
+      height: min(70%, 340px);
+      display: grid;
+      place-items: center;
+      border: 1px dashed #777;
+      background: #fff;
+      color: #777;
+      font-size: 12px;
+    }
+
+    .result-body {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(150px, 42%) minmax(200px, 58%);
+    }
+
+    .preview-layout {
+      display: grid;
+      place-items: center;
+      border-bottom: 1px solid #bbb;
+      padding: 20px;
+    }
+
+    .preview-placeholder {
+      color: #777;
+      font-size: 12px;
+    }
+
+    .editor-layout {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 32px minmax(0, 1fr) 48px;
+      padding: 12px 15px 10px;
+    }
+
+    .field-label {
+      display: flex;
+      align-items: center;
+      color: #666;
+      font-size: 11px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 0;
+      resize: none;
+      border: 1px dashed #999;
+      padding: 12px;
+      background: #fff;
+      color: #555;
+    }
+
+    .result-footer { justify-content: space-between; padding-top: 10px; }
+    .result-footer span { color: #777; font-size: 11px; }
+
+    .statusbar {
+      justify-content: space-between;
+      padding: 0 24px;
+      border-top: 1px solid #bbb;
+      color: #666;
+      font-size: 11px;
+    }
+
+    .screen-capture {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      background: rgba(0, 0, 0, .42);
+      cursor: crosshair;
+    }
+
+    .screen-capture.visible { display: block; }
+
+    .capture-instruction {
+      position: absolute;
+      top: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 9px 14px;
+      border: 1px solid #fff;
+      background: #222;
+      color: #fff;
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .selection-box {
+      position: absolute;
+      display: none;
+      border: 2px solid #fff;
+      background: rgba(255, 255, 255, .08);
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, .18);
+      pointer-events: none;
+    }
+
+    .selection-box.visible { display: block; }
+
+    .selection-size {
+      position: absolute;
+      left: 0;
+      bottom: -26px;
+      padding: 3px 6px;
+      background: #222;
+      color: #fff;
+      font-size: 10px;
+    }
+
+    .drawer-scrim {
+      position: absolute;
+      inset: 0;
+      display: none;
+      background: rgba(0, 0, 0, .18);
+    }
+
+    .drawer-scrim.visible { display: block; }
+
+    .history-drawer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(380px, 40vw);
+      display: none;
+      grid-template-rows: 58px minmax(0, 1fr);
+      border-left: 1px solid #777;
+      background: #fff;
+    }
+
+    .history-drawer.visible { display: grid; }
+
+    .drawer-header {
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid #aaa;
+    }
+
+    .history-empty {
+      display: grid;
+      place-items: center;
+      padding: 30px;
+      color: #777;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .work-area { grid-template-columns: 1fr; grid-template-rows: 42% 58%; }
+      .source-pane { border-right: 0; border-bottom: 1px solid #999; }
+      .workspace-toolbar small { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="identity">
+        <div class="app-mark">∫</div>
+        <strong>Pix2Tex</strong>
+        <span id="pageName">公式识别</span>
+      </div>
+
+      <div class="header-actions">
+        <span>CPU 已就绪</span>
+        <button class="text-button" id="historyButton">历史记录</button>
+        <button class="text-button">设置</button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="empty-state" id="emptyState">
+        <div class="empty-content">
+          <div class="empty-symbol">⌗</div>
+          <h1>识别一个数学公式</h1>
+          <p>框选屏幕上的公式，或从本机导入图片。<br />图片只在本机处理。</p>
+          <button class="primary capture-main" data-capture>区域截图</button>
+          <div class="input-options">
+            <button data-result>打开图片</button>
+            <button data-result>粘贴剪贴板图片</button>
+          </div>
+          <div class="shortcut">快捷键：Ctrl + Shift + 2</div>
+        </div>
+      </section>
+
+      <section class="workspace" id="workspace">
+        <div class="workspace-toolbar">
+          <div><strong>当前识别</strong><small>仅在导入后显示文件信息</small></div>
+          <div class="toolbar-actions">
+            <button data-capture>重新截图</button>
+            <button data-result>更换图片</button>
+            <button id="closeWorkspace">关闭</button>
+          </div>
+        </div>
+
+        <div class="work-area">
+          <section class="source-pane">
+            <div class="pane-title"><strong>原始截图</strong><span>图片尺寸</span></div>
+            <div class="source-body">
+              <div class="source-placeholder">截图显示区域</div>
+            </div>
+          </section>
+
+          <section class="result-pane">
+            <div class="pane-title"><strong>识别结果</strong><span>推理状态与耗时</span></div>
+            <div class="result-body">
+              <div class="preview-layout">
+                <div class="preview-placeholder">公式渲染区域</div>
+              </div>
+              <div class="editor-layout">
+                <label class="field-label" for="latexEditor">LaTeX 文本</label>
+                <textarea id="latexEditor" placeholder="识别出的 LaTeX 将出现在这里"></textarea>
+                <div class="result-footer">
+                  <span>识别完成后显示耗时</span>
+                  <button class="primary">复制 LaTeX</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <div class="drawer-scrim" id="drawerScrim"></div>
+      <aside class="history-drawer" id="historyDrawer">
+        <div class="drawer-header">
+          <strong>历史记录</strong>
+          <button id="closeHistory">关闭</button>
+        </div>
+        <div class="history-empty">暂无识别记录</div>
+      </aside>
+    </main>
+
+    <footer class="statusbar">
+      <span>本地模式</span>
+      <span id="statusText">等待输入</span>
+    </footer>
+  </div>
+
+  <div class="screen-capture" id="screenCapture">
+    <div class="capture-instruction">拖动框选公式 · Esc 取消</div>
+    <div class="selection-box" id="selectionBox">
+      <span class="selection-size" id="selectionSize">0 × 0</span>
+    </div>
+  </div>
+
+  <script>
+    const emptyState = document.querySelector('#emptyState');
+    const workspace = document.querySelector('#workspace');
+    const statusText = document.querySelector('#statusText');
+    const screenCapture = document.querySelector('#screenCapture');
+    const selectionBox = document.querySelector('#selectionBox');
+    const selectionSize = document.querySelector('#selectionSize');
+    const historyDrawer = document.querySelector('#historyDrawer');
+    const drawerScrim = document.querySelector('#drawerScrim');
+    let dragStart = null;
+
+    function showWorkspace() {
+      emptyState.style.display = 'none';
+      workspace.classList.add('visible');
+      statusText.textContent = '识别结果布局';
+    }
+
+    function showEmptyState() {
+      workspace.classList.remove('visible');
+      emptyState.style.display = 'grid';
+      statusText.textContent = '等待输入';
+    }
+
+    function showCapture() {
+      screenCapture.classList.add('visible');
+      selectionBox.classList.remove('visible');
+      dragStart = null;
+    }
+
+    function closeCapture(commit) {
+      screenCapture.classList.remove('visible');
+      selectionBox.classList.remove('visible');
+      dragStart = null;
+      if (commit) showWorkspace();
+    }
+
+    function toggleHistory(show) {
+      historyDrawer.classList.toggle('visible', show);
+      drawerScrim.classList.toggle('visible', show);
+    }
+
+    document.querySelectorAll('[data-capture]').forEach(button => button.addEventListener('click', showCapture));
+    document.querySelectorAll('[data-result]').forEach(button => button.addEventListener('click', showWorkspace));
+    document.querySelector('#closeWorkspace').addEventListener('click', showEmptyState);
+    document.querySelector('#historyButton').addEventListener('click', () => toggleHistory(true));
+    document.querySelector('#closeHistory').addEventListener('click', () => toggleHistory(false));
+    drawerScrim.addEventListener('click', () => toggleHistory(false));
+
+    screenCapture.addEventListener('pointerdown', event => {
+      dragStart = { x: event.clientX, y: event.clientY };
+      screenCapture.setPointerCapture(event.pointerId);
+      selectionBox.classList.add('visible');
+    });
+
+    screenCapture.addEventListener('pointermove', event => {
+      if (!dragStart) return;
+      const left = Math.min(dragStart.x, event.clientX);
+      const top = Math.min(dragStart.y, event.clientY);
+      const width = Math.abs(event.clientX - dragStart.x);
+      const height = Math.abs(event.clientY - dragStart.y);
+      Object.assign(selectionBox.style, {
+        left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px`
+      });
+      selectionSize.textContent = `${Math.round(width)} × ${Math.round(height)}`;
+    });
+
+    screenCapture.addEventListener('pointerup', event => {
+      if (!dragStart) return;
+      const width = Math.abs(event.clientX - dragStart.x);
+      const height = Math.abs(event.clientY - dragStart.y);
+      closeCapture(width > 24 && height > 18);
+    });
+
+    window.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        closeCapture(false);
+        toggleHistory(false);
+      }
+      if (event.ctrlKey && event.shiftKey && event.key === '2') showCapture();
+    });
+  </script>
+</body>
+</html>

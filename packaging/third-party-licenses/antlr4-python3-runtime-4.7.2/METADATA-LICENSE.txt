@@ -1,0 +1,5 @@
+Package: antlr4-python3-runtime
+Version: 4.7.2
+Declared license: BSD
+
+No standalone license file was present in the installed wheel metadata.

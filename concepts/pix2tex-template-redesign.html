@@ -1,0 +1,1177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pix2tex — 公式识别工作台</title>
+  <script>
+    try {
+      const savedTheme = localStorage.getItem('pix2tex-theme');
+      const preferredTheme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = savedTheme || preferredTheme;
+    } catch (_) {
+      document.documentElement.dataset.theme = 'light';
+    }
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --surface: #f7f9fb;
+      --surface-low: #f2f4f6;
+      --surface-mid: #eceef0;
+      --surface-high: #e6e8ea;
+      --surface-highest: #e0e3e5;
+      --white: #ffffff;
+      --ink: #191c1e;
+      --ink-soft: #45464d;
+      --ink-muted: #76777d;
+      --outline: #c6c6cd;
+      --primary: #111214;
+      --primary-hover: #2d3133;
+      --on-primary: #ffffff;
+      --success: #16875b;
+      --danger: #ba1a1a;
+      --editor: #0f172a;
+      --editor-rail: #172135;
+      --editor-line: #334155;
+      --editor-text: #e2e8f0;
+      --editor-muted: #64748b;
+      --stage-wash: rgba(236,238,240,.76);
+      --empty-surface: rgba(255,255,255,.88);
+      --shadow: rgba(25,28,30,.10);
+      --radius: 4px;
+      font-family: Inter, "Segoe UI Variable", "Segoe UI", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --surface: #121416;
+      --surface-low: #181b1e;
+      --surface-mid: #202428;
+      --surface-high: #292d31;
+      --surface-highest: #32373c;
+      --white: #171a1d;
+      --ink: #f0f1f2;
+      --ink-soft: #c4c7ca;
+      --ink-muted: #92979c;
+      --outline: #3b4045;
+      --primary: #f1f2f3;
+      --primary-hover: #d9dcde;
+      --on-primary: #111315;
+      --success: #48b987;
+      --danger: #ff8179;
+      --editor: #0b0e13;
+      --editor-rail: #111722;
+      --editor-line: #293345;
+      --editor-text: #e6edf5;
+      --editor-muted: #748197;
+      --stage-wash: rgba(26,29,32,.76);
+      --empty-surface: rgba(23,26,29,.90);
+      --shadow: rgba(0,0,0,.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--surface);
+      color: var(--ink);
+      transition: background-color 220ms ease, color 220ms ease;
+    }
+
+    button, textarea { font: inherit; }
+    button { cursor: pointer; }
+    svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* The viewport is the native window client area. No fake outer window is drawn. */
+    .app {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-rows: 48px minmax(0, 1fr);
+      position: relative;
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      min-width: 920px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--outline);
+      background: var(--surface);
+      transition: background-color 220ms ease, border-color 220ms ease;
+    }
+
+    .brand,
+    .nav,
+    .top-actions,
+    .button,
+    .engine-status,
+    .panel-title,
+    .panel-tools,
+    .zoom-control,
+    .editor-tabs,
+    .editor-status,
+    .history-row,
+    .setting-row,
+    .window-controls {
+      display: flex;
+      align-items: center;
+    }
+
+    .brand { min-width: 0; gap: 8px; }
+    .brand svg { width: 23px; height: 23px; stroke-width: 1.9; }
+    .brand strong { font-size: 17px; letter-spacing: -.025em; }
+    .brand span { margin-left: 4px; color: var(--ink-muted); font-size: 11px; }
+
+    .nav { align-self: stretch; gap: 4px; }
+
+    .nav-button {
+      position: relative;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 12px;
+      border: 0;
+      background: transparent;
+      color: var(--ink-soft);
+      font-size: 13px;
+      transition: background 140ms ease, color 140ms ease, transform 90ms ease;
+    }
+
+    .nav-button:hover { background: var(--surface-mid); }
+    .nav-button:active { transform: scale(.97); }
+    .nav-button.active { color: var(--ink); font-weight: 600; }
+    .nav-button.active::after { content: ""; position: absolute; left: 9px; right: 9px; bottom: 0; height: 2px; background: var(--primary); }
+    .nav-button svg { width: 17px; height: 17px; }
+
+    .top-actions { justify-content: flex-end; gap: 8px; }
+
+    .window-controls {
+      align-self: stretch;
+      gap: 0;
+      margin: 0 -16px 0 4px;
+    }
+
+    .window-button {
+      width: 44px;
+      height: 47px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--ink-soft);
+      transition: background 120ms ease, color 120ms ease, transform 90ms ease;
+    }
+
+    .window-button:hover { background: var(--surface-highest); }
+    .window-button:active { transform: scale(.94); }
+    .window-button.close:hover { background: #c42b1c; color: white; }
+    .window-button svg { width: 13px; height: 13px; stroke-width: 1.4; }
+
+    .engine-status {
+      gap: 7px;
+      height: 28px;
+      padding: 0 9px;
+      border: 1px solid var(--outline);
+      border-radius: var(--radius);
+      color: var(--ink-soft);
+      background: var(--white);
+      font-size: 11px;
+    }
+
+    .engine-status i { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+    .theme-toggle .sun,
+    :root[data-theme="dark"] .theme-toggle .moon { display: block; }
+    .theme-toggle .moon,
+    :root[data-theme="dark"] .theme-toggle .sun { display: none; }
+
+    .button {
+      justify-content: center;
+      gap: 7px;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--outline);
+      border-radius: var(--radius);
+      background: var(--white);
+      color: var(--ink-soft);
+      font-size: 12px;
+      transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 90ms ease, box-shadow 140ms ease;
+    }
+
+    .button:hover { border-color: #9d9ea4; background: var(--surface-low); color: var(--ink); }
+    .button:active:not(:disabled) { background: var(--surface-high); transform: scale(.965); }
+    .button svg { width: 16px; height: 16px; }
+
+    .button.primary { border-color: var(--primary); background: var(--primary); color: var(--on-primary); }
+    .button.primary:hover { background: var(--primary-hover); }
+    .button.icon-only { width: 30px; padding: 0; }
+    .button.ghost { border-color: transparent; background: transparent; }
+    .button:disabled { cursor: default; opacity: .42; }
+
+    button:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible,
+    input:focus-visible {
+      outline: 2px solid #596272;
+      outline-offset: 2px;
+    }
+
+    .view {
+      grid-row: 2;
+      grid-column: 1;
+      min-width: 0;
+      min-height: 0;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(7px);
+      transition:
+        opacity 170ms ease,
+        transform 220ms cubic-bezier(.22, 1, .36, 1),
+        visibility 0s linear 220ms;
+      will-change: opacity, transform;
+    }
+
+    .view.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(0);
+      transition-delay: 0s;
+    }
+
+    .recognition-view {
+      height: 100%;
+      padding: 16px;
+    }
+
+    .workspace-grid {
+      width: min(100%, 1440px);
+      height: 100%;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(360px, 1fr) minmax(440px, 1fr);
+      gap: 16px;
+    }
+
+    .panel {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid var(--outline);
+      border-radius: var(--radius);
+      background: var(--white);
+      box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow) 45%, transparent);
+      transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+    }
+
+    .panel-header {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px 0 12px;
+      border-bottom: 1px solid var(--outline);
+      background: var(--surface-low);
+    }
+
+    .panel-title { gap: 8px; }
+    .panel-title h2 { margin: 0; font-size: 13px; font-weight: 600; }
+    .panel-title span { color: var(--ink-muted); font: 10px/1.2 "JetBrains Mono", "Cascadia Code", Consolas, monospace; }
+    .panel-tools { gap: 4px; }
+    .panel-tools .button { min-height: 26px; height: 26px; }
+
+    .source-panel {
+      display: grid;
+      grid-template-rows: 36px minmax(0, 1fr) 42px;
+    }
+
+    .source-stage {
+      position: relative;
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background-color: var(--surface-mid);
+      background-image:
+        linear-gradient(var(--outline) 1px, transparent 1px),
+        linear-gradient(90deg, var(--outline) 1px, transparent 1px);
+      background-size: 24px 24px;
+      transition: box-shadow 140ms ease, background-color 220ms ease;
+    }
+
+    .source-stage.is-dragging { box-shadow: inset 0 0 0 2px var(--ink); }
+
+    .source-stage::after { content: ""; position: absolute; inset: 0; background: var(--stage-wash); pointer-events: none; transition: background-color 220ms ease; }
+
+    .source-empty {
+      position: relative;
+      z-index: 1;
+      width: min(440px, calc(100% - 64px));
+      padding: 34px 30px;
+      border: 1px dashed #a9aab0;
+      border-radius: var(--radius);
+      background: var(--empty-surface);
+      text-align: center;
+      transition: opacity 160ms ease, transform 220ms cubic-bezier(.22, 1, .36, 1), visibility 0s linear 220ms;
+      will-change: opacity, transform;
+    }
+
+    .source-empty .empty-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 16px;
+      border: 1px solid var(--outline);
+      background: var(--surface-low);
+    }
+
+    .source-empty h1 { margin: 0; font-size: 18px; letter-spacing: -.015em; }
+    .source-empty p { margin: 8px 0 20px; color: var(--ink-muted); font-size: 12px; line-height: 1.6; }
+    .empty-actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+    .empty-actions .primary { min-width: 126px; }
+    .shortcut { margin-top: 14px; color: #929398; font: 10px/1.3 "Cascadia Code", Consolas, monospace; }
+
+    .source-loaded {
+      position: absolute;
+      z-index: 2;
+      inset: 20px;
+      display: grid;
+      place-items: center;
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(.985);
+      transition: opacity 170ms ease, transform 240ms cubic-bezier(.22, 1, .36, 1), visibility 0s linear 240ms;
+      will-change: opacity, transform;
+    }
+
+    .has-source .source-empty {
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(.985);
+      pointer-events: none;
+    }
+    .has-source .source-loaded {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+      transition-delay: 70ms;
+    }
+
+    .image-placeholder {
+      width: min(78%, 620px);
+      aspect-ratio: 1.8;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--outline);
+      background: var(--white);
+      box-shadow: 0 6px 18px var(--shadow);
+      color: var(--ink-muted);
+      font-size: 12px;
+      overflow: hidden;
+    }
+
+    .image-placeholder img { width: 100%; height: 100%; object-fit: contain; display: none; }
+    .image-placeholder.has-image img { display: block; }
+    .image-placeholder.has-image span { display: none; }
+
+    .source-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      border-top: 1px solid var(--outline);
+      background: var(--surface-low);
+      color: var(--ink-muted);
+      font-size: 10px;
+    }
+
+    .source-footer-actions,
+    .temperature-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .source-footer .button { min-height: 28px; height: 28px; }
+    .temperature-control label { color: var(--ink-muted); font-size: 10px; }
+
+    .temperature-input {
+      width: 58px;
+      height: 27px;
+      padding: 0 5px;
+      border: 1px solid var(--outline);
+      border-radius: var(--radius);
+      background: var(--white);
+      color: var(--ink);
+      font: 10px "Cascadia Code", Consolas, monospace;
+    }
+
+    .zoom-control { gap: 5px; }
+
+    .output-column {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(220px, 1fr) minmax(260px, 1fr);
+      gap: 16px;
+    }
+
+    .preview-panel,
+    .editor-panel {
+      display: grid;
+      grid-template-rows: 36px minmax(0, 1fr);
+    }
+
+    .preview-body {
+      position: relative;
+      display: grid;
+      place-items: center;
+      overflow: auto;
+      background: var(--surface);
+    }
+
+    .preview-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+      color: #9a9ba1;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .preview-placeholder svg { width: 28px; height: 28px; }
+    .has-source .preview-placeholder span { display: none; }
+    .has-source .preview-placeholder::after { content: "识别完成后在此渲染公式"; }
+
+    .editor-panel { grid-template-rows: 36px 32px minmax(0, 1fr) 26px; }
+
+    .editor-tabs { align-self: stretch; gap: 12px; }
+    .editor-tabs h2 { margin: 0; font-size: 13px; }
+    .editor-tabs span { color: var(--ink-muted); font: 10px/1 "Cascadia Code", Consolas, monospace; }
+
+    .source-tabs,
+    .format-bar,
+    .format-options {
+      display: flex;
+      align-items: center;
+    }
+
+    .source-tabs { align-self: stretch; gap: 2px; }
+
+    .editor-tab {
+      align-self: stretch;
+      position: relative;
+      padding: 0 8px;
+      border: 0;
+      background: transparent;
+      color: var(--ink-muted);
+      font-size: 11px;
+      transition: color 130ms ease, background 130ms ease, transform 90ms ease;
+    }
+
+    .editor-tab:hover { background: var(--surface-high); color: var(--ink); }
+    .editor-tab:active { transform: scale(.96); }
+    .editor-tab.active { color: var(--ink); font-weight: 600; }
+    .editor-tab.active::after { content: ""; position: absolute; left: 7px; right: 7px; bottom: 0; height: 2px; background: var(--ink); }
+
+    .format-bar {
+      justify-content: space-between;
+      padding: 0 8px 0 12px;
+      border-bottom: 1px solid var(--outline);
+      background: var(--surface-low);
+    }
+
+    .format-label { color: var(--ink-muted); font-size: 10px; }
+    .format-options { gap: 3px; }
+
+    .format-option {
+      height: 23px;
+      padding: 0 8px;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      background: transparent;
+      color: var(--ink-muted);
+      font-size: 10px;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease, transform 90ms ease;
+    }
+
+    .format-option:hover { background: var(--surface-high); color: var(--ink); }
+    .format-option:active { transform: scale(.96); }
+    .format-option.active { border-color: var(--outline); background: var(--white); color: var(--ink); font-weight: 600; }
+
+    .editor-body {
+      position: relative;
+      min-height: 0;
+      background: var(--editor);
+    }
+
+    .editor-page {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateX(5px);
+      transition: opacity 140ms ease, transform 180ms cubic-bezier(.22,1,.36,1), visibility 0s linear 180ms;
+    }
+
+    .editor-page.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateX(0);
+      transition-delay: 0s;
+    }
+
+    .line-numbers {
+      padding: 10px 8px 0 0;
+      border-right: 1px solid var(--editor-line);
+      background: var(--editor-rail);
+      color: var(--editor-muted);
+      text-align: right;
+      font: 11px/1.7 "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+      user-select: none;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      padding: 10px 12px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--editor-text);
+      caret-color: white;
+      font: 12px/1.7 "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    }
+
+    textarea::placeholder { color: var(--editor-muted); }
+    textarea:disabled { cursor: default; }
+    textarea { transition: box-shadow 140ms ease, background 140ms ease; }
+    textarea:focus { box-shadow: inset 0 0 0 1px rgba(226,232,240,.26); background: rgba(255,255,255,.018); }
+
+    .editor-status {
+      justify-content: space-between;
+      padding: 0 9px;
+      border-top: 1px solid var(--outline);
+      background: var(--surface-low);
+      color: var(--ink-muted);
+      font-size: 10px;
+    }
+
+    .editor-status .status-left { display: flex; align-items: center; gap: 6px; }
+    .editor-status i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-muted); }
+    .has-source .editor-status i { background: #b7791f; }
+    .editor-error { color: var(--danger); }
+
+    .page-view {
+      height: 100%;
+      padding: 24px;
+      overflow: auto;
+    }
+
+    .page-shell { width: min(100%, 960px); margin: 0 auto; }
+    .page-shell h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: -.02em; }
+    .page-shell > p { margin: 0 0 22px; color: var(--ink-muted); font-size: 13px; }
+
+    .page-panel { border: 1px solid var(--outline); border-radius: var(--radius); background: var(--white); }
+
+    .history-row {
+      justify-content: space-between;
+      min-height: 64px;
+      padding: 0 16px;
+      color: var(--ink-muted);
+    }
+
+    .history-empty { min-height: 260px; display: grid; place-items: center; color: var(--ink-muted); font-size: 12px; }
+
+    .settings-list { overflow: hidden; }
+    .setting-row { justify-content: space-between; min-height: 58px; padding: 0 16px; border-bottom: 1px solid var(--outline); }
+    .setting-row:last-child { border-bottom: 0; }
+    .setting-copy strong { display: block; font-size: 13px; }
+    .setting-copy span { display: block; margin-top: 3px; color: var(--ink-muted); font-size: 11px; }
+    .select { min-width: 150px; height: 30px; border: 1px solid var(--outline); border-radius: var(--radius); background: var(--white); padding: 0 8px; color: var(--ink-soft); }
+    .select, input[type="checkbox"] { transition: border-color 120ms ease, box-shadow 140ms ease, transform 90ms ease; }
+    input[type="checkbox"] { accent-color: var(--primary); }
+    input[type="checkbox"]:active { transform: scale(.9); }
+
+    .capture-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: block;
+      cursor: crosshair;
+      background: rgba(10, 12, 15, .42);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 150ms ease, visibility 0s linear 150ms;
+    }
+
+    .capture-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition-delay: 0s;
+    }
+
+    .capture-tip {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 9px 13px;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: var(--radius);
+      background: rgba(15,17,20,.90);
+      color: white;
+      font-size: 11px;
+      pointer-events: none;
+    }
+
+    .selection {
+      position: absolute;
+      display: none;
+      border: 1px solid white;
+      background: rgba(255,255,255,.06);
+      box-shadow: 0 0 0 9999px rgba(5,7,9,.18);
+      pointer-events: none;
+    }
+
+    .selection.visible { display: block; }
+    .selection span { position: absolute; left: 0; bottom: -25px; padding: 3px 6px; border-radius: 2px; background: #111; color: white; font: 9px/1.4 "Cascadia Code", Consolas, monospace; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      z-index: 120;
+      padding: 8px 11px;
+      border-radius: var(--radius);
+      background: var(--primary);
+      color: var(--on-primary);
+      font-size: 11px;
+      opacity: 0;
+      transform: translate(-50%, 8px);
+      pointer-events: none;
+      transition: opacity 140ms ease, transform 140ms ease;
+    }
+
+    .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+        transition-delay: 0s !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .topbar { grid-template-columns: auto 1fr auto; }
+      .engine-status span { display: none; }
+      .nav { justify-content: center; }
+      .workspace-grid { grid-template-columns: 1fr; grid-template-rows: minmax(260px, .85fr) minmax(430px, 1.15fr); overflow: auto; }
+      .recognition-view { overflow: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 3.5h-4.2a3 3 0 0 0-3 2.5L8.5 18a3 3 0 0 1-3 2.5H3"/><path d="M6.5 9.5h8"/></svg>
+        <strong>pix2tex</strong>
+      </div>
+
+      <nav class="nav" aria-label="主要页面">
+        <button class="nav-button active" data-view="recognition">
+          <svg viewBox="0 0 24 24"><path d="M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8M12 8v8"/></svg>
+          识别
+        </button>
+        <button class="nav-button" data-view="history">
+          <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>
+          历史
+        </button>
+        <button class="nav-button" data-view="settings">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2-.7-.5-1.2.9-1.9-2.1-2.1-1.9.9-1.2-.5-.7-2h-3l-.7 2-1.2.5-1.9-.9L2.6 6.7l.9 1.9L3 9.8l-2 .7v3l2 .7.5 1.2-.9 1.9 2.1 2.1 1.9-.9 1.2.5.7 2h3l.7-2 1.2-.5 1.9.9 2.1-2.1-.9-1.9.5-1.2z" transform="scale(.82) translate(2.6 2.6)"/></svg>
+          设置
+        </button>
+      </nav>
+
+      <div class="top-actions">
+        <div class="engine-status"><i></i><span>CPU 引擎已就绪</span></div>
+        <button class="button icon-only theme-toggle" id="themeToggle" aria-label="切换明暗主题" title="切换明暗主题">
+          <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="moon" viewBox="0 0 24 24"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2Z"/></svg>
+        </button>
+        <div class="window-controls" aria-label="窗口控制">
+          <button class="window-button" id="minimizeWindow" aria-label="最小化" title="最小化">
+            <svg viewBox="0 0 16 16"><path d="M3 8.5h10"/></svg>
+          </button>
+          <button class="window-button close" id="closeWindow" aria-label="关闭" title="关闭">
+            <svg viewBox="0 0 16 16"><path d="m4 4 8 8M12 4l-8 8"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="view recognition-view active" data-view-panel="recognition">
+      <div class="workspace-grid">
+        <section class="panel source-panel">
+          <header class="panel-header">
+            <div class="panel-title"><h2>原始图像</h2><span id="sourceMeta">未导入</span></div>
+            <div class="panel-tools zoom-control">
+              <button class="button icon-only ghost" title="缩小" disabled><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4 4M8 10.5h5"/></svg></button>
+              <span style="font:10px 'Cascadia Code',monospace;color:var(--ink-muted)">100%</span>
+              <button class="button icon-only ghost" title="放大" disabled><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4 4M8 10.5h5M10.5 8v5"/></svg></button>
+            </div>
+          </header>
+
+          <div class="source-stage" id="sourceStage">
+            <div class="source-empty">
+              <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8M12 8v8"/></svg></div>
+              <h1>截取或导入公式</h1>
+              <p>框选屏幕中的公式图片，识别过程完全在本机进行。</p>
+              <div class="empty-actions">
+                <button class="button primary" data-capture>区域截图</button>
+                <button class="button" id="openImageButton">打开图片</button>
+                <button class="button" id="pasteImageButton">粘贴图片</button>
+              </div>
+              <div class="shortcut">Ctrl + A</div>
+            </div>
+
+            <div class="source-loaded">
+              <div class="image-placeholder" id="imagePlaceholder">
+                <img id="sourceImage" alt="导入的公式图片" />
+                <span>截图或导入的图片显示区域</span>
+              </div>
+            </div>
+          </div>
+
+          <footer class="source-footer">
+            <div class="source-footer-actions">
+              <button class="button primary" id="snipButton" data-capture>
+                <svg viewBox="0 0 24 24"><path d="M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8M12 8v8"/></svg>
+                <span>区域截图</span>
+              </button>
+              <button class="button" id="retryButton" disabled>重试</button>
+            </div>
+            <div class="temperature-control">
+              <label for="temperatureInput">Temperature</label>
+              <input class="temperature-input" id="temperatureInput" type="number" min="0" max="1" step="0.1" value="0.3" />
+            </div>
+          </footer>
+        </section>
+
+        <section class="output-column">
+          <article class="panel preview-panel">
+            <header class="panel-header">
+              <div class="panel-title"><h2>公式预览</h2></div>
+              <div class="panel-tools">
+                <button class="button icon-only ghost" title="复制" id="copyPreview" disabled><svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="1"/><path d="M16 8V5H5v11h3"/></svg></button>
+                <button class="button icon-only ghost" title="保存到历史" disabled><svg viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4z"/></svg></button>
+              </div>
+            </header>
+            <div class="preview-body">
+              <div class="preview-placeholder">
+                <svg viewBox="0 0 24 24"><path d="M17 3h-3.8a3 3 0 0 0-3 2.5L8.5 18a3 3 0 0 1-3 2.5H3"/><path d="M6.5 10h8"/></svg>
+                <span>导入图片后显示识别结果</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel editor-panel">
+            <header class="panel-header">
+              <div class="source-tabs" aria-label="源码视图">
+                <button class="editor-tab active" data-editor-tab="raw">原始预测</button>
+                <button class="editor-tab" data-editor-tab="formatted">格式化输出</button>
+              </div>
+              <div class="panel-tools">
+                <button class="button icon-only ghost" title="复制 LaTeX" id="copyLatex" disabled><svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="1"/><path d="M16 8V5H5v11h3"/></svg></button>
+                <button class="button icon-only ghost" title="撤销" data-editor-action="undo" disabled><svg viewBox="0 0 24 24"><path d="m9 7-5 5 5 5M5 12h8a6 6 0 0 1 6 6"/></svg></button>
+                <button class="button icon-only ghost" title="重做" data-editor-action="redo" disabled><svg viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M19 12h-8a6 6 0 0 0-6 6"/></svg></button>
+              </div>
+            </header>
+            <div class="format-bar">
+              <span class="format-label">输出格式</span>
+              <div class="format-options" role="radiogroup" aria-label="输出格式">
+                <button class="format-option" data-format="raw">Raw</button>
+                <button class="format-option active" data-format="latex-inline">LaTeX-$</button>
+                <button class="format-option" data-format="latex-display">LaTeX-$$</button>
+                <button class="format-option" data-format="sympy">SymPy</button>
+              </div>
+            </div>
+            <div class="editor-body">
+              <div class="editor-page active" data-editor-panel="raw">
+                <div class="line-numbers">1</div>
+                <textarea id="rawEditor" spellcheck="false" disabled placeholder="模型的原始预测将显示在这里"></textarea>
+              </div>
+              <div class="editor-page" data-editor-panel="formatted">
+                <div class="line-numbers">1</div>
+                <textarea id="formattedEditor" spellcheck="false" disabled placeholder="按所选格式生成的输出将显示在这里"></textarea>
+              </div>
+            </div>
+            <footer class="editor-status">
+              <div class="status-left"><i></i><span id="editorState">等待识别</span><span class="editor-error" id="formatError"></span></div>
+              <span id="duration">—</span>
+            </footer>
+          </article>
+        </section>
+      </div>
+    </main>
+
+    <main class="view page-view" data-view-panel="history">
+      <div class="page-shell">
+        <h1>历史记录</h1>
+        <p>识别记录只保存在这台电脑上。</p>
+        <section class="page-panel">
+          <div class="history-empty">暂无识别记录</div>
+        </section>
+      </div>
+    </main>
+
+    <main class="view page-view" data-view-panel="settings">
+      <div class="page-shell">
+        <h1>设置</h1>
+        <p>调整识别和复制行为。</p>
+        <section class="page-panel settings-list">
+          <div class="setting-row">
+            <div class="setting-copy"><strong>识别设备</strong><span>当前发行版使用 CPU 推理</span></div>
+            <select class="select" disabled><option>CPU</option></select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-copy"><strong>识别后自动复制</strong><span>完成识别时将 LaTeX 写入剪贴板</span></div>
+            <input type="checkbox" id="autoCopySetting" checked />
+          </div>
+          <div class="setting-row">
+            <div class="setting-copy"><strong>区域截图快捷键</strong><span>用于从其他软件中快速开始框选</span></div>
+            <button class="button">Ctrl + A</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-copy"><strong>小图自动增强</strong><span>小于 100 px 时自动放大并增强对比度与锐度</span></div>
+            <input type="checkbox" checked disabled />
+          </div>
+          <div class="setting-row">
+            <div class="setting-copy"><strong>界面主题</strong><span>跟随系统，或固定使用亮色/暗色</span></div>
+            <select class="select" id="themeSelect"><option value="system">跟随系统</option><option value="light">亮色</option><option value="dark">暗色</option></select>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/bmp,image/webp" hidden />
+
+  <div class="capture-overlay" id="captureOverlay">
+    <div class="capture-tip">拖动框选公式 · Esc 取消</div>
+    <div class="selection" id="selection"><span id="selectionSize">0 × 0</span></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const app = document.querySelector('#app');
+    const navButtons = [...document.querySelectorAll('[data-view]')];
+    const viewPanels = [...document.querySelectorAll('[data-view-panel]')];
+    const editorTabs = [...document.querySelectorAll('[data-editor-tab]')];
+    const editorPanels = [...document.querySelectorAll('[data-editor-panel]')];
+    const formatButtons = [...document.querySelectorAll('[data-format]')];
+    const captureOverlay = document.querySelector('#captureOverlay');
+    const selection = document.querySelector('#selection');
+    const selectionSize = document.querySelector('#selectionSize');
+    const sourceStage = document.querySelector('#sourceStage');
+    const imageFileInput = document.querySelector('#imageFileInput');
+    const imagePlaceholder = document.querySelector('#imagePlaceholder');
+    const sourceImage = document.querySelector('#sourceImage');
+    const rawEditor = document.querySelector('#rawEditor');
+    const formattedEditor = document.querySelector('#formattedEditor');
+    const retryButton = document.querySelector('#retryButton');
+    const snipButton = document.querySelector('#snipButton');
+    const themeSelect = document.querySelector('#themeSelect');
+    const themeToggle = document.querySelector('#themeToggle');
+    const autoCopySetting = document.querySelector('#autoCopySetting');
+    const toast = document.querySelector('#toast');
+    const systemTheme = matchMedia('(prefers-color-scheme: dark)');
+    let dragStart = null;
+    let toastTimer = null;
+    let processingTimer = null;
+    let processing = false;
+    let currentFormat = 'latex-inline';
+    let currentObjectUrl = null;
+
+    function showView(name) {
+      navButtons.forEach(button => button.classList.toggle('active', button.dataset.view === name));
+      viewPanels.forEach(panel => panel.classList.toggle('active', panel.dataset.viewPanel === name));
+    }
+
+    function showEditorTab(name) {
+      editorTabs.forEach(button => button.classList.toggle('active', button.dataset.editorTab === name));
+      editorPanels.forEach(panel => panel.classList.toggle('active', panel.dataset.editorPanel === name));
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('visible'), 1400);
+    }
+
+    function applyTheme(mode, persist = true) {
+      const resolved = mode === 'system' ? (systemTheme.matches ? 'dark' : 'light') : mode;
+      document.documentElement.dataset.theme = resolved;
+      themeSelect.value = mode;
+      if (!persist) return;
+      try {
+        if (mode === 'system') localStorage.removeItem('pix2tex-theme');
+        else localStorage.setItem('pix2tex-theme', mode);
+      } catch (_) {}
+    }
+
+    function initializeThemeControl() {
+      let saved = null;
+      try { saved = localStorage.getItem('pix2tex-theme'); } catch (_) {}
+      applyTheme(saved || 'system', false);
+    }
+
+    async function writeClipboard(text, notify = false) {
+      if (!text) {
+        if (notify) showToast('当前没有可复制的内容');
+        return false;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        if (notify) showToast('LaTeX 已复制');
+        return true;
+      } catch (_) {
+        if (notify) showToast('浏览器原型没有剪贴板权限');
+        return false;
+      }
+    }
+
+    function normalizeRaw(value) {
+      const text = value.trim();
+      if (text.startsWith('$$') && text.endsWith('$$') && text.length >= 4) return text.slice(2, -2);
+      if (text.startsWith('$') && text.endsWith('$') && text.length >= 2) return text.slice(1, -1);
+      return text;
+    }
+
+    function refreshFormatted(copyAutomatically = true) {
+      const raw = normalizeRaw(rawEditor.value);
+      const error = document.querySelector('#formatError');
+      error.textContent = '';
+      if (!raw) {
+        formattedEditor.value = '';
+        return;
+      }
+      if (currentFormat === 'raw') formattedEditor.value = raw;
+      if (currentFormat === 'latex-inline') formattedEditor.value = `$${raw}$`;
+      if (currentFormat === 'latex-display') formattedEditor.value = `$$${raw}$$`;
+      if (currentFormat === 'sympy') {
+        formattedEditor.value = raw;
+        error.textContent = 'SymPy 转换在桌面应用中执行';
+      }
+      if (copyAutomatically && autoCopySetting.checked) writeClipboard(formattedEditor.value, false);
+    }
+
+    function setPreviewImage(fileOrBlob, label) {
+      if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = null;
+      imagePlaceholder.classList.remove('has-image');
+      sourceImage.removeAttribute('src');
+      if (fileOrBlob) {
+        currentObjectUrl = URL.createObjectURL(fileOrBlob);
+        sourceImage.src = currentObjectUrl;
+        imagePlaceholder.classList.add('has-image');
+      }
+      document.querySelector('#sourceMeta').textContent = label;
+    }
+
+    function setProcessing(value) {
+      processing = value;
+      clearTimeout(processingTimer);
+      const label = snipButton.querySelector('span');
+      label.textContent = value ? '中断' : '区域截图';
+      document.querySelector('#editorState').textContent = value ? '正在识别，可中断' : '等待模型输出';
+      retryButton.disabled = value || !app.classList.contains('has-source');
+    }
+
+    function startProcessingPreview() {
+      setProcessing(true);
+      processingTimer = setTimeout(() => setProcessing(false), 900);
+    }
+
+    function interruptProcessing() {
+      if (!processing) return;
+      setProcessing(false);
+      document.querySelector('#editorState').textContent = '已中断';
+      showToast('识别已中断');
+    }
+
+    function enterImportedState(sourceLabel, fileOrBlob = null) {
+      app.classList.add('has-source');
+      setPreviewImage(fileOrBlob, sourceLabel);
+      rawEditor.disabled = false;
+      formattedEditor.disabled = false;
+      retryButton.disabled = false;
+      document.querySelector('#copyLatex').disabled = false;
+      document.querySelector('#copyPreview').disabled = false;
+      document.querySelectorAll('[data-editor-action]').forEach(button => button.disabled = false);
+      showView('recognition');
+      startProcessingPreview();
+    }
+
+    function acceptImageFile(file, sourceLabel = null) {
+      if (!file) return;
+      const extension = file.name?.split('.').pop()?.toLowerCase();
+      const supported = file.type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'bmp', 'webp'].includes(extension);
+      if (!supported) return showToast('请选择受支持的图片文件');
+      enterImportedState(sourceLabel || file.name || '剪贴板图片', file);
+    }
+
+    async function pasteImageFromClipboard() {
+      try {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imageType = item.types.find(type => type.startsWith('image/'));
+          if (imageType) return acceptImageFile(await item.getType(imageType), '剪贴板图片');
+        }
+        showToast('剪贴板中没有图片');
+      } catch (_) {
+        showToast('可直接按 Ctrl+V 粘贴图片');
+      }
+    }
+
+    function openCapture() {
+      captureOverlay.classList.add('visible');
+      selection.classList.remove('visible');
+      dragStart = null;
+    }
+
+    function closeCapture(commit) {
+      captureOverlay.classList.remove('visible');
+      selection.classList.remove('visible');
+      dragStart = null;
+      if (commit) enterImportedState('区域截图 · 等待实际文件信息');
+    }
+
+    navButtons.forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
+    editorTabs.forEach(button => button.addEventListener('click', () => showEditorTab(button.dataset.editorTab)));
+    formatButtons.forEach(button => button.addEventListener('click', () => {
+      currentFormat = button.dataset.format;
+      formatButtons.forEach(item => item.classList.toggle('active', item === button));
+      refreshFormatted();
+      showEditorTab('formatted');
+    }));
+
+    document.querySelectorAll('[data-capture]').forEach(button => button.addEventListener('click', () => {
+      if (button === snipButton && processing) interruptProcessing();
+      else openCapture();
+    }));
+
+    document.querySelector('#openImageButton').addEventListener('click', () => imageFileInput.click());
+    document.querySelector('#pasteImageButton').addEventListener('click', pasteImageFromClipboard);
+    imageFileInput.addEventListener('change', () => acceptImageFile(imageFileInput.files[0]));
+    retryButton.addEventListener('click', startProcessingPreview);
+
+    rawEditor.addEventListener('input', () => refreshFormatted());
+    formattedEditor.addEventListener('input', () => {
+      if (autoCopySetting.checked) writeClipboard(formattedEditor.value, false);
+    });
+
+    document.querySelector('#copyLatex').addEventListener('click', () => writeClipboard(formattedEditor.value || rawEditor.value, true));
+    document.querySelector('#copyPreview').addEventListener('click', () => writeClipboard(formattedEditor.value || rawEditor.value, true));
+    document.querySelectorAll('[data-editor-action]').forEach(button => button.addEventListener('click', () => {
+      const editor = document.querySelector('[data-editor-panel].active textarea');
+      editor.focus();
+      document.execCommand(button.dataset.editorAction);
+    }));
+
+    sourceStage.addEventListener('dragenter', event => { event.preventDefault(); sourceStage.classList.add('is-dragging'); });
+    sourceStage.addEventListener('dragover', event => event.preventDefault());
+    sourceStage.addEventListener('dragleave', event => {
+      if (!sourceStage.contains(event.relatedTarget)) sourceStage.classList.remove('is-dragging');
+    });
+    sourceStage.addEventListener('drop', event => {
+      event.preventDefault();
+      sourceStage.classList.remove('is-dragging');
+      acceptImageFile(event.dataTransfer.files[0]);
+    });
+
+    window.addEventListener('paste', event => {
+      const imageItem = [...event.clipboardData.items].find(item => item.type.startsWith('image/'));
+      if (imageItem) acceptImageFile(imageItem.getAsFile(), '剪贴板图片');
+    });
+
+    themeToggle.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    });
+    themeSelect.addEventListener('change', () => applyTheme(themeSelect.value));
+    systemTheme.addEventListener('change', () => {
+      if (themeSelect.value === 'system') applyTheme('system', false);
+    });
+
+    document.querySelector('#minimizeWindow').addEventListener('click', () => showToast('迁移到 QML 后连接最小化'));
+    document.querySelector('#closeWindow').addEventListener('click', () => showToast('迁移到 QML 后连接关闭'));
+
+    captureOverlay.addEventListener('pointerdown', event => {
+      dragStart = { x: event.clientX, y: event.clientY };
+      captureOverlay.setPointerCapture(event.pointerId);
+      selection.classList.add('visible');
+      Object.assign(selection.style, { left: `${event.clientX}px`, top: `${event.clientY}px`, width: '0px', height: '0px' });
+    });
+
+    captureOverlay.addEventListener('pointermove', event => {
+      if (!dragStart) return;
+      const left = Math.min(dragStart.x, event.clientX);
+      const top = Math.min(dragStart.y, event.clientY);
+      const width = Math.abs(event.clientX - dragStart.x);
+      const height = Math.abs(event.clientY - dragStart.y);
+      Object.assign(selection.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+      selectionSize.textContent = `${Math.round(width)} × ${Math.round(height)}`;
+    });
+
+    captureOverlay.addEventListener('pointerup', event => {
+      if (!dragStart) return;
+      const width = Math.abs(event.clientX - dragStart.x);
+      const height = Math.abs(event.clientY - dragStart.y);
+      closeCapture(width > 24 && height > 18);
+    });
+
+    window.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeCapture(false);
+      const target = event.target;
+      const isEditing = target instanceof HTMLElement && (
+        target.matches('textarea, input, [contenteditable="true"]') || target.isContentEditable
+      );
+      if (event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'a' && !isEditing) {
+        event.preventDefault();
+        openCapture();
+      }
+    });
+
+    initializeThemeControl();
+  </script>
+</body>
+</html>

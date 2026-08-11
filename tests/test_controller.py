@@ -1,0 +1,141 @@
+from __future__ import annotations
+
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from PySide6.QtCore import QCoreApplication
+
+from pix2tex_app.controller import AppController, _worker_process_command
+
+
+class ControllerTests(unittest.TestCase):
+    def test_frozen_build_uses_sibling_console_worker(self) -> None:
+        program, arguments = _worker_process_command(
+            frozen=True,
+            executable=r"C:\Program Files\Pix2Tex Studio\Pix2TexStudio.exe",
+        )
+
+        self.assertEqual(
+            program,
+            r"C:\Program Files\Pix2Tex Studio\Pix2TexWorker.exe",
+        )
+        self.assertEqual(arguments, [])
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QCoreApplication.instance() or QCoreApplication([])
+
+    def test_history_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            controller = AppController(start_worker=False, data_dir=data_dir)
+            controller._record_history("x^2", "", "0.42s")
+            restored = AppController(start_worker=False, data_dir=data_dir)
+            self.assertEqual(restored.historyModel.rowCount(), 1)
+            self.assertEqual(restored.historyModel.entry(0)["formula"], "x^2")
+
+    def test_history_preview_roles_update_without_polluting_saved_history(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            controller = AppController(start_worker=False, data_dir=Path(directory))
+            controller._record_history("x^2", "", "0.10s")
+            controller.historyModel.set_preview_for_formula("x^2", "light.png", "dark.png", 120, 48)
+
+            index = controller.historyModel.index(0, 0)
+            self.assertTrue(controller.historyModel.data(index, controller.historyModel.PreviewReadyRole))
+            self.assertEqual(controller.historyModel.data(index, controller.historyModel.PreviewWidthRole), 120)
+            self.assertFalse(any(key.startswith("_") for key in controller.historyModel.serializable()[0]))
+
+    def test_history_copy_and_single_delete(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            controller = AppController(start_worker=False, data_dir=data_dir)
+            controller._record_history(r"\frac{a}{b}", "", "0.10s")
+            copied: list[str] = []
+            controller._copy_to_clipboard = copied.append
+
+            controller.copyHistoryFormula(0)
+            self.assertEqual(copied, [r"\frac{a}{b}"])
+            controller.removeHistory(0)
+            self.assertEqual(controller.historyModel.rowCount(), 0)
+            self.assertEqual(json.loads((data_dir / "history.json").read_text(encoding="utf-8")), [])
+
+    def test_history_limit_and_generated_cache_cleanup(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            controller = AppController(start_worker=False, data_dir=data_dir)
+            controller.setHistoryLimit(50)
+            for index in range(55):
+                controller._record_history(f"x_{index}", "", "0.10s")
+            self.assertEqual(controller.historyModel.rowCount(), 50)
+            self.assertEqual(controller.historyModel.entry(49)["formula"], "x_5")
+
+            retained = data_dir / "cache" / "capture-retained.png"
+            stale = data_dir / "cache" / "clipboard-stale.png"
+            retained.write_bytes(b"retained")
+            stale.write_bytes(b"stale")
+            controller._record_history("y", str(retained), "0.10s")
+            controller._cleanup_generated_cache()
+            self.assertTrue(retained.exists())
+            self.assertFalse(stale.exists())
+
+    def test_editing_latex_updates_property(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            controller = AppController(start_worker=False, data_dir=Path(directory))
+            controller.setLatex(r"\frac{a}{b}")
+            self.assertEqual(controller.latex, r"\frac{a}{b}")
+
+    def test_initial_state_contains_no_demo_formula(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            controller = AppController(start_worker=False, data_dir=Path(directory))
+            self.assertEqual(controller.latex, "")
+            self.assertEqual(controller.formattedLatex, "")
+
+    def test_output_formats_follow_raw_prediction(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            controller = AppController(start_worker=False, data_dir=Path(directory))
+            controller.setLatex("x^2")
+            self.assertEqual(controller.formattedLatex, "$x^2$")
+            controller.setFormatMode("raw")
+            self.assertEqual(controller.formattedLatex, "x^2")
+            controller.setFormatMode("latex-display")
+            self.assertEqual(controller.formattedLatex, "$$x^2$$")
+
+    def test_preferences_persist_in_project_data_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            controller = AppController(start_worker=False, data_dir=data_dir)
+            controller.setTemperature(0.7)
+            controller.setThemeMode("dark")
+            controller.setAutoCopy(False)
+            controller.setSmallImageEnhancement(False)
+            controller.setGlobalHotkey("Alt+S")
+            restored = AppController(start_worker=False, data_dir=data_dir)
+            self.assertAlmostEqual(restored.temperature, 0.7)
+            self.assertEqual(restored.themeMode, "dark")
+            self.assertFalse(restored.autoCopy)
+            self.assertFalse(restored.smallImageEnhancement)
+            self.assertEqual(restored.globalHotkey, "Alt+S")
+
+    def test_prediction_sends_small_image_enhancement_setting(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            controller = AppController(start_worker=False, data_dir=Path(directory))
+            payloads: list[dict] = []
+            controller._engine_state = "ready"
+            controller._send = payloads.append
+            controller.setSmallImageEnhancement(False)
+            controller._predict("formula.png")
+            self.assertFalse(payloads[0]["small_image_enhancement"])
+
+    def test_global_hotkey_rejects_an_occupied_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            controller = AppController(start_worker=False, data_dir=Path(directory))
+            controller.bind_global_hotkey(lambda value: (value != "Alt+S", "occupied"))
+            controller.setGlobalHotkey("Alt+S")
+            self.assertEqual(controller.globalHotkey, "Ctrl+Shift+A")
+            self.assertEqual(controller.globalHotkeyStatus, "occupied")
+
+
+if __name__ == "__main__":
+    unittest.main()
