@@ -4,6 +4,8 @@ RequestExecutionLevel user
 SetCompressor /SOLID lzma
 SetDatablockOptimize on
 
+!define MUI_ICON "..\packaging\pix2tex-studio.ico"
+!define MUI_UNICON "..\packaging\pix2tex-studio.ico"
 !include "MUI2.nsh"
 
 !define APP_NAME "Pix2Tex Studio"
@@ -16,8 +18,6 @@ Name "${APP_NAME}"
 OutFile "output\Pix2TexStudio-${APP_VERSION}-Setup.exe"
 InstallDir "$LOCALAPPDATA\Programs\Pix2Tex Studio"
 InstallDirRegKey HKCU "${APP_REG_KEY}" "InstallLocation"
-Icon "..\packaging\pix2tex-studio.ico"
-UninstallIcon "..\packaging\pix2tex-studio.ico"
 
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${APP_EXE}"
@@ -45,7 +45,8 @@ Section "Pix2Tex Studio" MainSection
   CreateDirectory "$SMPROGRAMS\Pix2Tex Studio"
   CreateShortcut "$SMPROGRAMS\Pix2Tex Studio\Pix2Tex Studio.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
   CreateShortcut "$SMPROGRAMS\Pix2Tex Studio\卸载 Pix2Tex Studio.lnk" "$INSTDIR\Uninstall.exe"
-  CreateShortcut "$DESKTOP\Pix2Tex Studio.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
+  Delete "$DESKTOP\Pix2Tex Studio.lnk"
+  CreateShortcut "$DESKTOP\pix2tex.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
 
   WriteRegStr HKCU "${APP_REG_KEY}" "DisplayName" "${APP_NAME}"
   WriteRegStr HKCU "${APP_REG_KEY}" "DisplayVersion" "${APP_VERSION}"
@@ -60,6 +61,7 @@ SectionEnd
 
 Section "Uninstall"
   SetShellVarContext current
+  Delete "$DESKTOP\pix2tex.lnk"
   Delete "$DESKTOP\Pix2Tex Studio.lnk"
   Delete "$SMPROGRAMS\Pix2Tex Studio\Pix2Tex Studio.lnk"
   Delete "$SMPROGRAMS\Pix2Tex Studio\卸载 Pix2Tex Studio.lnk"

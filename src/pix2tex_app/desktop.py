@@ -7,9 +7,11 @@ import sys
 from collections.abc import Callable
 
 from PySide6.QtCore import QAbstractNativeEventFilter, QObject, Qt, Signal, Slot
-from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPixmap, QWindow
+from PySide6.QtGui import QAction, QIcon, QWindow
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+
+from pix2tex_app.app_icon import render_app_icon
 
 
 class SingleInstanceGuard(QObject):
@@ -134,20 +136,7 @@ class DesktopIntegration(QObject):
             self.showWindow()
 
     def _create_icon(self) -> QIcon:
-        pixmap = QPixmap(64, 64)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#1b1d20"))
-        painter.drawRoundedRect(3, 3, 58, 58, 15, 15)
-        painter.setPen(QColor("#ffffff"))
-        font = QFont("Cambria Math", 36)
-        font.setItalic(True)
-        painter.setFont(font)
-        painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "∫")
-        painter.end()
-        return QIcon(pixmap)
+        return QIcon(render_app_icon())
 
     def _create_tray(self) -> None:
         if not QSystemTrayIcon.isSystemTrayAvailable():

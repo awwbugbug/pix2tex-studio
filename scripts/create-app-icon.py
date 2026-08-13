@@ -1,36 +1,21 @@
 from pathlib import Path
+import sys
 
 from PIL import Image
-from PySide6.QtCore import QRectF, QSize
-from PySide6.QtGui import QGuiApplication, QImage, QPainter
-from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtGui import QGuiApplication
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
+from pix2tex_app.app_icon import render_app_icon  # noqa: E402
 
 
 def main() -> int:
-    project_root = Path(__file__).resolve().parent.parent
-    source = (
-        project_root
-        / "runtime"
-        / "build_env"
-        / "Lib"
-        / "site-packages"
-        / "pix2tex"
-        / "resources"
-        / "icon.svg"
-    )
-    output = project_root / "packaging" / "pix2tex-studio.ico"
-    if not source.is_file():
-        raise FileNotFoundError(f"Upstream pix2tex icon not found: {source}")
+    output = PROJECT_ROOT / "packaging" / "pix2tex-studio.ico"
 
     QGuiApplication([])
-    renderer = QSvgRenderer(str(source))
-    if not renderer.isValid():
-        raise RuntimeError(f"Could not render {source}")
-    image = QImage(QSize(256, 256), QImage.Format.Format_ARGB32)
-    image.fill(0)
-    painter = QPainter(image)
-    renderer.render(painter, QRectF(0, 0, 256, 256))
-    painter.end()
+    image = render_app_icon(256).toImage()
 
     png = output.with_suffix(".png")
     if not image.save(str(png), "PNG"):

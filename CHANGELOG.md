@@ -24,6 +24,8 @@ All notable changes to Pix2Tex Studio are recorded here.
 
 - Added a CPU-only PyInstaller one-folder build with separate GUI and OCR worker executables.
 - Added a per-user NSIS installer, uninstall registration, and Windows shortcuts.
+- Unified the executable, installer, window, and tray icon as a dark rounded square with a white integral symbol.
+- Shortened the desktop shortcut name to `pix2tex` while retaining `Pix2Tex Studio` as the product name.
 - Added offline installed-build, Chinese-path, DPI, single-instance, tray, and stability checks.
 - Added reproducible locked runtime inputs and complete third-party license collection.
 
