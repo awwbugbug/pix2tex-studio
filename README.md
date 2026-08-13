@@ -2,6 +2,21 @@
 
 Pix2Tex Studio is a local-first Windows desktop application for turning formula screenshots and images into editable LaTeX. The development baseline is CPU-only and uses the cloned environment under `runtime/pix2tex_env`.
 
+This is an independent community project built around the open-source
+[pix2tex/LaTeX-OCR](https://github.com/lukas-blecher/LaTeX-OCR) model. It is not
+affiliated with or endorsed by the upstream pix2tex maintainers.
+
+## Install on Windows
+
+Download the latest Windows installer from
+[GitHub Releases](https://github.com/awwbugbug/pix2tex-studio/releases). The
+installer contains the CPU inference runtime and model weights, so Anaconda,
+Python, CUDA, and an internet connection are not required at runtime.
+
+The current `1.0.0rc1` installer is unsigned. Windows may therefore display a
+SmartScreen warning. Verify the SHA-256 value published with the release before
+running it.
+
 ## Development run
 
 ```powershell
@@ -72,3 +87,10 @@ Release gates and current blockers are
 tracked in `docs/release/FREEZE.md`; the frozen OCR and Windows protocol is in
 `docs/release/ACCEPTANCE.md`. The candidate is not a final 1.0 release until
 those gates pass.
+
+## Licensing and attribution
+
+Pix2Tex Studio's original application code is available under the
+[MIT License](LICENSE). Bundled third-party components remain subject to their
+own licenses. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the
+corresponding `packaging/third-party-licenses/` directory for details.
