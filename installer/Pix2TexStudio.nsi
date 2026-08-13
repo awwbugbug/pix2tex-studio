@@ -40,13 +40,14 @@ Section "Pix2Tex Studio" MainSection
   SetShellVarContext current
   SetOutPath "$INSTDIR"
   File /r "..\dist\Pix2TexStudio\*.*"
+  File /oname=pix2tex.ico "..\packaging\pix2tex-studio.ico"
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\Pix2Tex Studio"
-  CreateShortcut "$SMPROGRAMS\Pix2Tex Studio\Pix2Tex Studio.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
+  CreateShortcut "$SMPROGRAMS\Pix2Tex Studio\Pix2Tex Studio.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\pix2tex.ico" 0
   CreateShortcut "$SMPROGRAMS\Pix2Tex Studio\卸载 Pix2Tex Studio.lnk" "$INSTDIR\Uninstall.exe"
   Delete "$DESKTOP\Pix2Tex Studio.lnk"
-  CreateShortcut "$DESKTOP\pix2tex.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
+  CreateShortcut "$DESKTOP\pix2tex.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\pix2tex.ico" 0
 
   WriteRegStr HKCU "${APP_REG_KEY}" "DisplayName" "${APP_NAME}"
   WriteRegStr HKCU "${APP_REG_KEY}" "DisplayVersion" "${APP_VERSION}"

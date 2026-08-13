@@ -12,7 +12,12 @@ class InstallerContractTests(unittest.TestCase):
     def test_desktop_shortcut_uses_short_name_and_cleans_legacy_name(self) -> None:
         script = self._script()
 
-        self.assertIn('CreateShortcut "$DESKTOP\\pix2tex.lnk"', script)
+        expected_shortcut = (
+            'CreateShortcut "$DESKTOP\\pix2tex.lnk" "$INSTDIR\\${APP_EXE}" '
+            '"" "$INSTDIR\\pix2tex.ico" 0'
+        )
+        self.assertIn('File /oname=pix2tex.ico "..\\packaging\\pix2tex-studio.ico"', script)
+        self.assertIn(expected_shortcut, script)
         self.assertNotIn('CreateShortcut "$DESKTOP\\Pix2Tex Studio.lnk"', script)
         self.assertIn('Delete "$DESKTOP\\pix2tex.lnk"', script)
         self.assertIn('Delete "$DESKTOP\\Pix2Tex Studio.lnk"', script)
