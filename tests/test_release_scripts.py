@@ -48,6 +48,16 @@ class ReleaseScriptContractTests(unittest.TestCase):
         self.assertIn(r"pix2tex_app\models\unimernet_tiny", manifest)
         self.assertNotIn(r"pix2tex\model\checkpoints", manifest)
 
+    def test_isolated_installer_acceptance_has_a_scoped_target_and_cleanup(self) -> None:
+        script = self._script("test-installer-isolated.ps1")
+        self.assertIn("Unsafe installer test target", script)
+        self.assertIn("/RELEASETEST", script)
+        self.assertIn("Get-UserInstallState", script)
+        self.assertIn("Uninstaller left the test installation directory", script)
+        self.assertIn('$startInfo.Arguments = $Arguments', script)
+        self.assertIn("AddSeconds(10)", script)
+        self.assertIn("release-upgrade-sentinel.txt", script)
+
 
 if __name__ == "__main__":
     unittest.main()

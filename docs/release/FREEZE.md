@@ -25,7 +25,7 @@ modified by this local freeze.
 - Model: UniMERNet tiny, 430,075,701-byte weights file.
 - Model SHA-256: `6F7608624E2D7549C7F0F05FCFBE073AE521328CF70F1D46374D96F9881D7371`.
 - Exact runtime dependency lock: 183 distributions.
-- Automated source checks at freeze: 56/56 passed.
+- Automated source checks at freeze: 58/58 passed.
 - Clean packaged GUI and offline Worker single-image smoke test passed.
 
 The development runtime and model directory are read-only release inputs. The

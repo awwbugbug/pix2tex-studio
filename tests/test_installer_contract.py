@@ -31,6 +31,12 @@ class InstallerContractTests(unittest.TestCase):
         self.assertLess(script.index(icon_definition), include_index)
         self.assertLess(script.index(unicon_definition), include_index)
 
+    def test_release_test_mode_isolated_from_user_shell_and_registry(self) -> None:
+        script = self._script()
+        self.assertEqual(script.count('${GetOptions} $R0 "/RELEASETEST" $R1'), 2)
+        self.assertEqual(script.count('${If} $ReleaseTest != 1'), 2)
+        self.assertIn('RMDir /r "$INSTDIR"', script)
+
 
 if __name__ == "__main__":
     unittest.main()

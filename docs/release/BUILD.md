@@ -37,6 +37,8 @@ $runtime = 'D:\path\to\runtime'
 .\scripts\test-worker-stability.ps1 `
   -Fixture D:\path\to\worker-fixture.png
 .\scripts\build-installer.ps1 -RuntimeRoot $runtime
+.\scripts\test-installer-isolated.ps1 `
+  -Fixture D:\path\to\worker-fixture.png
 .\scripts\test-windows-integration.ps1
 .\scripts\create-release-manifest.ps1 -RuntimeRoot $runtime
 ```
@@ -51,3 +53,9 @@ The portable directory and installer are intentionally ignored by Git. Source,
 locks, spec, NSIS script, notices, tests, and release documentation are
 versioned. The installer is unsigned because no Authenticode certificate is
 configured; this must remain disclosed with the release candidate.
+
+`test-installer-isolated.ps1` uses the explicit NSIS `/RELEASETEST` switch. It
+installs to a generated Chinese path containing spaces, performs a same-path
+upgrade and installed-app smoke test, and invokes the real uninstaller. In this
+mode only, shortcut and uninstall-registry writes are skipped so an existing
+user installation cannot be overwritten by acceptance testing.

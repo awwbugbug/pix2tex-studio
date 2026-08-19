@@ -7,6 +7,28 @@ SetDatablockOptimize on
 !define MUI_ICON "..\packaging\pix2tex-studio.ico"
 !define MUI_UNICON "..\packaging\pix2tex-studio.ico"
 !include "MUI2.nsh"
+!include "FileFunc.nsh"
+!include "LogicLib.nsh"
+
+Var ReleaseTest
+
+Function .onInit
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/RELEASETEST" $R1
+  ${IfNot} ${Errors}
+    StrCpy $ReleaseTest 1
+  ${EndIf}
+FunctionEnd
+
+Function un.onInit
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/RELEASETEST" $R1
+  ${IfNot} ${Errors}
+    StrCpy $ReleaseTest 1
+  ${EndIf}
+FunctionEnd
 
 !define APP_NAME "Pix2Tex Studio"
 !define APP_VERSION "2.0.0-rc1"
@@ -43,30 +65,34 @@ Section "Pix2Tex Studio" MainSection
   File /oname=pix2tex.ico "..\packaging\pix2tex-studio.ico"
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
-  CreateDirectory "$SMPROGRAMS\Pix2Tex Studio"
-  CreateShortcut "$SMPROGRAMS\Pix2Tex Studio\Pix2Tex Studio.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\pix2tex.ico" 0
-  CreateShortcut "$SMPROGRAMS\Pix2Tex Studio\卸载 Pix2Tex Studio.lnk" "$INSTDIR\Uninstall.exe"
-  Delete "$DESKTOP\Pix2Tex Studio.lnk"
-  CreateShortcut "$DESKTOP\pix2tex.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\pix2tex.ico" 0
+  ${If} $ReleaseTest != 1
+    CreateDirectory "$SMPROGRAMS\Pix2Tex Studio"
+    CreateShortcut "$SMPROGRAMS\Pix2Tex Studio\Pix2Tex Studio.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\pix2tex.ico" 0
+    CreateShortcut "$SMPROGRAMS\Pix2Tex Studio\卸载 Pix2Tex Studio.lnk" "$INSTDIR\Uninstall.exe"
+    Delete "$DESKTOP\Pix2Tex Studio.lnk"
+    CreateShortcut "$DESKTOP\pix2tex.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\pix2tex.ico" 0
 
-  WriteRegStr HKCU "${APP_REG_KEY}" "DisplayName" "${APP_NAME}"
-  WriteRegStr HKCU "${APP_REG_KEY}" "DisplayVersion" "${APP_VERSION}"
-  WriteRegStr HKCU "${APP_REG_KEY}" "Publisher" "${APP_PUBLISHER}"
-  WriteRegStr HKCU "${APP_REG_KEY}" "DisplayIcon" "$INSTDIR\${APP_EXE}"
-  WriteRegStr HKCU "${APP_REG_KEY}" "InstallLocation" "$INSTDIR"
-  WriteRegStr HKCU "${APP_REG_KEY}" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
-  WriteRegStr HKCU "${APP_REG_KEY}" "QuietUninstallString" "$\"$INSTDIR\Uninstall.exe$\" /S"
-  WriteRegDWORD HKCU "${APP_REG_KEY}" "NoModify" 1
-  WriteRegDWORD HKCU "${APP_REG_KEY}" "NoRepair" 1
+    WriteRegStr HKCU "${APP_REG_KEY}" "DisplayName" "${APP_NAME}"
+    WriteRegStr HKCU "${APP_REG_KEY}" "DisplayVersion" "${APP_VERSION}"
+    WriteRegStr HKCU "${APP_REG_KEY}" "Publisher" "${APP_PUBLISHER}"
+    WriteRegStr HKCU "${APP_REG_KEY}" "DisplayIcon" "$INSTDIR\${APP_EXE}"
+    WriteRegStr HKCU "${APP_REG_KEY}" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKCU "${APP_REG_KEY}" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
+    WriteRegStr HKCU "${APP_REG_KEY}" "QuietUninstallString" "$\"$INSTDIR\Uninstall.exe$\" /S"
+    WriteRegDWORD HKCU "${APP_REG_KEY}" "NoModify" 1
+    WriteRegDWORD HKCU "${APP_REG_KEY}" "NoRepair" 1
+  ${EndIf}
 SectionEnd
 
 Section "Uninstall"
   SetShellVarContext current
-  Delete "$DESKTOP\pix2tex.lnk"
-  Delete "$DESKTOP\Pix2Tex Studio.lnk"
-  Delete "$SMPROGRAMS\Pix2Tex Studio\Pix2Tex Studio.lnk"
-  Delete "$SMPROGRAMS\Pix2Tex Studio\卸载 Pix2Tex Studio.lnk"
-  RMDir "$SMPROGRAMS\Pix2Tex Studio"
-  DeleteRegKey HKCU "${APP_REG_KEY}"
+  ${If} $ReleaseTest != 1
+    Delete "$DESKTOP\pix2tex.lnk"
+    Delete "$DESKTOP\Pix2Tex Studio.lnk"
+    Delete "$SMPROGRAMS\Pix2Tex Studio\Pix2Tex Studio.lnk"
+    Delete "$SMPROGRAMS\Pix2Tex Studio\卸载 Pix2Tex Studio.lnk"
+    RMDir "$SMPROGRAMS\Pix2Tex Studio"
+    DeleteRegKey HKCU "${APP_REG_KEY}"
+  ${EndIf}
   RMDir /r "$INSTDIR"
 SectionEnd

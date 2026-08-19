@@ -16,15 +16,17 @@ recognition backend. It is not published yet.
 
 ## Candidate verification so far
 
-- 56 automated tests passed.
+- 58 automated tests passed.
 - Clean one-folder portable build completed from the isolated CPU build prefix.
 - Packaged GUI smoke test passed.
 - Packaged Worker loaded offline, recognized the regression fixture, and shut down cleanly.
-- A three-request deterministic stability sample completed with zero errors.
+- A 25-request deterministic stability run completed with zero errors.
+- Isolated Chinese-path install, same-path upgrade, installed OCR, and uninstall passed.
+- Taskbar restore, single-instance handoff, and close-to-tray integration passed.
 - Generated third-party notices represent the locked 2.0 runtime and model stack.
 
-Final installer and 25-request Windows evidence will be added after the
-versioned candidate rebuild.
+The candidate installer is unsigned and measures 798,090,103 bytes. Its
+SHA-256 is `20AE6036AE0CD15A5DDF1CB7C2E6BA2F05D8D71E0F751D122FEF39A5F53C2590`.
 
 ## Known candidate limitations
 

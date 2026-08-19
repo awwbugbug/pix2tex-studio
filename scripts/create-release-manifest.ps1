@@ -36,7 +36,7 @@ $manifest = [ordered]@{
     platform = [System.Environment]::OSVersion.VersionString
     git_commit = $gitCommit
     automated_tests = [ordered]@{
-        count = 56
+        count = 58
         status = 'passed'
     }
     runtime = $runtime
