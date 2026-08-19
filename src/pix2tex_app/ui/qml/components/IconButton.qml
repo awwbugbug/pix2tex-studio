@@ -2,8 +2,10 @@ import QtQuick
 import QtQuick.Shapes
 import ".."
 
-// A square-ish button that renders a stroked SVG-path icon (24x24 viewBox)
-// instead of text, matching ActionButton's chrome.
+// A square icon button for the handwriting board. The board is always a white
+// canvas, so this uses a FIXED light palette regardless of the app theme:
+// white when idle, black when selected, solid grey when disabled — matching the
+// light theme so the selected state stays readable on the white surface.
 Item {
     id: root
 
@@ -16,16 +18,26 @@ Item {
     implicitWidth: 36
     implicitHeight: 30
 
+    readonly property color _panel: "#FFFFFF"
+    readonly property color _hover: "#EDEFF1"
+    readonly property color _disabled: "#E7E9EB"
+    readonly property color _line: "#C6C6CD"
+    readonly property color _ink: "#191C1E"
+    readonly property color _inkMuted: "#9A9BA1"
+    readonly property color _primary: "#111214"
+    readonly property color _primaryHover: "#2D3133"
+    readonly property color _onPrimary: "#FFFFFF"
+    readonly property color _danger: "#C42B1C"
+
     Rectangle {
         anchors.fill: parent
         radius: Theme.radius
-        opacity: root.buttonEnabled ? 1 : 0.5
-        color: !root.buttonEnabled ? Theme.panel
-             : root.primary ? (area.containsMouse ? Theme.primaryHover : Theme.primary)
-             : (root.danger && area.containsMouse) ? "#C42B1C"
-             : area.containsMouse ? Theme.surfaceHigh : Theme.panel
-        border.width: root.primary ? 0 : 1
-        border.color: (root.danger && area.containsMouse) ? "#C42B1C" : Theme.line
+        color: !root.buttonEnabled ? root._disabled
+             : root.primary ? (area.containsMouse ? root._primaryHover : root._primary)
+             : (root.danger && area.containsMouse) ? root._danger
+             : area.containsMouse ? root._hover : root._panel
+        border.width: (root.primary && root.buttonEnabled) ? 0 : 1
+        border.color: (root.danger && area.containsMouse) ? root._danger : root._line
         scale: area.pressed && root.buttonEnabled ? 0.965 : (area.containsMouse && root.buttonEnabled ? 1.015 : 1.0)
         Behavior on color { ColorAnimation { duration: 120 } }
         Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
@@ -39,10 +51,10 @@ Item {
             antialiasing: true
 
             ShapePath {
-                strokeColor: !root.buttonEnabled ? Theme.inkMuted
-                    : root.primary ? Theme.primaryForeground
+                strokeColor: !root.buttonEnabled ? root._inkMuted
+                    : root.primary ? root._onPrimary
                     : (root.danger && area.containsMouse) ? "white"
-                    : Theme.ink
+                    : root._ink
                 strokeWidth: 2
                 fillColor: "transparent"
                 capStyle: ShapePath.RoundCap
