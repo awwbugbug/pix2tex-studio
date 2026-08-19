@@ -15,7 +15,7 @@ Source of truth: `runtime/pix2tex_env/Lib/site-packages/pix2tex/gui.py` from the
 | Raw output | Output format control | Available | Strip surrounding dollar delimiters |
 | Inline LaTeX output | Output format control | Available | Wrap raw result in `$...$` |
 | Display LaTeX output | Output format control | Available | Wrap raw result in `$$...$$` |
-| SymPy output | Output format control | UI and honest prototype notice | Use bundled `latex2sympy2`; expose parse failure inline |
+| SymPy output | Output format control | UI and honest prototype notice | Use bundled SymPy Lark parser; expose parse failure inline |
 | Editable formatted output | Editor: Formatted output tab | Editable textarea | Editing writes formatted text to clipboard, matching original behavior |
 | Automatic clipboard copy | Settings | Enabled by default | Preserve original automatic formatted-output copy behavior |
 | Temperature 0–1 | Source footer | Numeric step input | Send current value on each inference; map zero to a small positive epsilon |

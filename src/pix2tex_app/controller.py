@@ -389,10 +389,10 @@ class AppController(QObject):
             formatted = f"$${raw}$$"
         else:
             try:
-                from latex2sympy2 import latex2sympy
+                from sympy.parsing.latex import parse_latex
 
                 normalized = re.sub(r"operatorname\*{(\w+)}", r"\1", raw)
-                formatted = str(latex2sympy(f"${normalized}$"))
+                formatted = str(parse_latex(normalized, backend="lark"))
             except Exception:
                 formatted = raw
                 error = "SymPy 解析失败"

@@ -116,6 +116,14 @@ class ControllerTests(unittest.TestCase):
             controller.setFormatMode("latex-display")
             self.assertEqual(controller.formattedLatex, "$$x^2$$")
 
+    def test_sympy_output_uses_the_runtime_compatible_parser(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            controller = AppController(start_worker=False, data_dir=Path(directory))
+            controller.setLatex(r"\frac{1}{2}")
+            controller.setFormatMode("sympy")
+            self.assertEqual(controller.formattedLatex, "1/2")
+            self.assertEqual(controller.formatError, "")
+
     def test_preferences_persist_in_project_data_dir(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             data_dir = Path(directory)

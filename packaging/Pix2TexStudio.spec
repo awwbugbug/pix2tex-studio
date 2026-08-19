@@ -41,7 +41,6 @@ common_datas = [
 ]
 common_hiddenimports = [
     "antlr4",
-    "latex2sympy2",
     "transformers",
     "timm",
     "cv2",
