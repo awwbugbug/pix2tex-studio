@@ -47,6 +47,8 @@ class ReleaseScriptContractTests(unittest.TestCase):
         manifest = self._script("create-release-manifest.ps1")
         self.assertIn(r"pix2tex_app\models\unimernet_tiny", manifest)
         self.assertNotIn(r"pix2tex\model\checkpoints", manifest)
+        self.assertIn("SHA256SUMS.txt", manifest)
+        self.assertIn("$installerSha256", manifest)
 
     def test_isolated_installer_acceptance_has_a_scoped_target_and_cleanup(self) -> None:
         script = self._script("test-installer-isolated.ps1")

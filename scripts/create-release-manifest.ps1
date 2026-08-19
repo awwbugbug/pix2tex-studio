@@ -28,6 +28,9 @@ $weights = Join-Path $modelRoot 'unimernet_tiny.pth'
 $modelFiles = @(Get-ChildItem -LiteralPath $modelRoot -File)
 $gitCommit = git -C $projectRoot rev-parse HEAD 2>$null
 if ($LASTEXITCODE -ne 0) { $gitCommit = $null }
+$mainExeSha256 = (Get-FileHash -LiteralPath $mainExe -Algorithm SHA256).Hash
+$workerExeSha256 = (Get-FileHash -LiteralPath $workerExe -Algorithm SHA256).Hash
+$installerSha256 = (Get-FileHash -LiteralPath $installerItem.FullName -Algorithm SHA256).Hash
 
 $manifest = [ordered]@{
     generated_at = (Get-Date).ToString('o')
@@ -44,8 +47,8 @@ $manifest = [ordered]@{
         path = $portableRoot
         file_count = $portableFiles.Count
         bytes = ($portableFiles | Measure-Object Length -Sum).Sum
-        main_exe_sha256 = (Get-FileHash -LiteralPath $mainExe -Algorithm SHA256).Hash
-        worker_exe_sha256 = (Get-FileHash -LiteralPath $workerExe -Algorithm SHA256).Hash
+        main_exe_sha256 = $mainExeSha256
+        worker_exe_sha256 = $workerExeSha256
     }
     model = [ordered]@{
         name = 'UniMERNet tiny'
@@ -58,7 +61,7 @@ $manifest = [ordered]@{
     installer = [ordered]@{
         path = $installerItem.FullName
         bytes = $installerItem.Length
-        sha256 = (Get-FileHash -LiteralPath $installerItem.FullName -Algorithm SHA256).Hash
+        sha256 = $installerSha256
         authenticode_status = (Get-AuthenticodeSignature -LiteralPath $installerItem.FullName).Status.ToString()
     }
     third_party_licenses = [ordered]@{
@@ -70,4 +73,12 @@ $manifest = [ordered]@{
 New-Item -ItemType Directory -Path $evidenceRoot -Force | Out-Null
 $output = Join-Path $evidenceRoot 'release-manifest.json'
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $output -Encoding utf8
-Write-Output $output
+$checksums = Join-Path $evidenceRoot 'SHA256SUMS.txt'
+@(
+    "$installerSha256  $($installerItem.Name)"
+) | Set-Content -LiteralPath $checksums -Encoding ascii
+
+[pscustomobject]@{
+    manifest = $output
+    checksums = $checksums
+}
