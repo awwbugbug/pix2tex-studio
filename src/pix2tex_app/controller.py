@@ -171,13 +171,11 @@ class AppController(QObject):
     imageNameChanged = Signal()
     lastDurationChanged = Signal()
     noticeChanged = Signal()
-    temperatureChanged = Signal()
     themeModeChanged = Signal()
     autoCopyChanged = Signal()
     globalHotkeyChanged = Signal()
     globalHotkeyStatusChanged = Signal()
     historyLimitChanged = Signal()
-    smallImageEnhancementChanged = Signal()
 
     _VALID_FORMATS = {"raw", "latex-inline", "latex-display", "sympy"}
     _VALID_THEMES = {"system", "light", "dark"}
@@ -226,12 +224,7 @@ class AppController(QObject):
         self._theme_mode = str(self._settings.value("themeMode", "system"))
         if self._theme_mode not in self._VALID_THEMES:
             self._theme_mode = "system"
-        self._temperature = float(self._settings.value("temperature", 0.3))
-        self._temperature = min(1.0, max(0.0, self._temperature))
         self._auto_copy = str(self._settings.value("autoCopy", "true")).lower() not in {"0", "false", "no"}
-        self._small_image_enhancement = str(
-            self._settings.value("smallImageEnhancement", "true")
-        ).lower() not in {"0", "false", "no"}
         self._global_hotkey = str(self._settings.value("globalHotkey", "Ctrl+Shift+A"))
         if self._global_hotkey not in self._VALID_GLOBAL_HOTKEYS:
             self._global_hotkey = "Ctrl+Shift+A"
@@ -305,10 +298,6 @@ class AppController(QObject):
     def imageName(self) -> str:  # noqa: N802
         return Path(self._image_path).name if self._image_path else "未导入"
 
-    @Property(float, notify=temperatureChanged)
-    def temperature(self) -> float:
-        return self._temperature
-
     @Property(str, notify=themeModeChanged)
     def themeMode(self) -> str:  # noqa: N802
         return self._theme_mode
@@ -337,10 +326,6 @@ class AppController(QObject):
     @Property(int, notify=historyLimitChanged)
     def historyLimit(self) -> int:  # noqa: N802
         return self._history_limit
-
-    @Property(bool, notify=smallImageEnhancementChanged)
-    def smallImageEnhancement(self) -> bool:  # noqa: N802
-        return self._small_image_enhancement
 
     @Property(str, notify=lastDurationChanged)
     def lastDuration(self) -> str:  # noqa: N802
@@ -521,8 +506,6 @@ class AppController(QObject):
                 "type": "predict",
                 "id": uuid.uuid4().hex,
                 "path": path,
-                "temperature": max(self._temperature, 1e-8),
-                "small_image_enhancement": self._small_image_enhancement,
             }
         )
 
@@ -570,6 +553,24 @@ class AppController(QObject):
             self._accept_image(urls[0].toLocalFile())
             return
         self._set_notice("剪贴板里没有图片或图片文件")
+
+    @Slot(result=str)
+    def canvasImagePath(self) -> str:  # noqa: N802
+        """Return a fresh cache path for the handwriting canvas to save into."""
+        path = self._cache_dir / f"drawing-{datetime.now():%Y%m%d-%H%M%S-%f}.png"
+        return str(path)
+
+    @Slot()
+    def clearImage(self) -> None:  # noqa: N802
+        """Drop the current image and result, returning to the initial state."""
+        self._image_path = ""
+        self.imageUrlChanged.emit()
+        self.imageNameChanged.emit()
+        self._set_latex("")
+        if self._last_duration != "—":
+            self._last_duration = "—"
+            self.lastDurationChanged.emit()
+        self._set_notice("离线识别 · 数据仅保存在本机")
 
     @Slot()
     def captureFormula(self) -> None:  # noqa: N802
@@ -663,15 +664,6 @@ class AppController(QObject):
         self.formatModeChanged.emit()
         self._refresh_formatted(copy=True)
 
-    @Slot(float)
-    def setTemperature(self, value: float) -> None:  # noqa: N802
-        value = min(1.0, max(0.0, float(value)))
-        if abs(value - self._temperature) < 1e-6:
-            return
-        self._temperature = value
-        self._settings.setValue("temperature", value)
-        self.temperatureChanged.emit()
-
     @Slot(str)
     def setThemeMode(self, value: str) -> None:  # noqa: N802
         if value not in self._VALID_THEMES or value == self._theme_mode:
@@ -688,17 +680,6 @@ class AppController(QObject):
         self._auto_copy = value
         self._settings.setValue("autoCopy", value)
         self.autoCopyChanged.emit()
-
-    @Slot(bool)
-    def setSmallImageEnhancement(self, value: bool) -> None:  # noqa: N802
-        value = bool(value)
-        if value == self._small_image_enhancement:
-            return
-        self._small_image_enhancement = value
-        self._settings.setValue("smallImageEnhancement", value)
-        self.smallImageEnhancementChanged.emit()
-        state = "开启" if value else "关闭"
-        self._set_notice(f"小图自动增强已{state} · 重试后生效")
 
     @Slot(str)
     def setGlobalHotkey(self, value: str) -> None:  # noqa: N802
@@ -877,9 +858,7 @@ class AppController(QObject):
                 settings={
                     "format_mode": self._format_mode,
                     "theme_mode": self._theme_mode,
-                    "temperature": self._temperature,
                     "auto_copy": self._auto_copy,
-                    "small_image_enhancement": self._small_image_enhancement,
                     "global_hotkey": self._global_hotkey,
                     "history_limit": self._history_limit,
                 },

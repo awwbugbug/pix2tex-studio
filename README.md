@@ -1,10 +1,17 @@
 # Pix2Tex Studio
 
-Pix2Tex Studio is a local-first Windows desktop application for turning formula screenshots and images into editable LaTeX. The development baseline is CPU-only and uses the cloned environment under `runtime/pix2tex_env`.
+Pix2Tex Studio is a local-first Windows desktop application for turning formula screenshots, images, and handwriting into editable LaTeX. It is CPU-only by default.
 
-This is an independent community project built around the open-source
-[pix2tex/LaTeX-OCR](https://github.com/lukas-blecher/LaTeX-OCR) model. It is not
-affiliated with or endorsed by the upstream pix2tex maintainers.
+> **2.0 (in development):** the recognition backend has moved from pix2tex to
+> [UniMERNet](https://github.com/opendatalab/UniMERNet) (Apache-2.0), which also
+> covers handwriting. A pen/canvas input mode and automatic dark-background
+> handling were added. The frozen `1.0.0rc1` (pix2tex) release below is unchanged.
+> The 2.0 dev runtime lives under `runtime/unimernet_env`.
+
+This is an independent community project. The 1.0 line was built around
+[pix2tex/LaTeX-OCR](https://github.com/lukas-blecher/LaTeX-OCR); 2.0 is built around
+[UniMERNet](https://github.com/opendatalab/UniMERNet). It is not affiliated with or
+endorsed by either upstream project.
 
 ## Install on Windows
 
@@ -23,15 +30,16 @@ running it.
 .\scripts\run-dev.ps1
 ```
 
-The QML interface opens at a compact `980 × 640`. Torch and pix2tex load in a separate worker process, so the window remains responsive during cold start.
+The QML interface opens at a compact `980 × 640`. Torch and UniMERNet load in a separate worker process, so the window remains responsive during cold start.
 
 ## Implemented
 
 - PySide6 + Qt Quick/QML desktop interface
 - real region capture on the display under the cursor, with Esc cancellation
 - open, paste, and drag-and-drop image input
-- isolated CPU inference with Temperature support
-- optional small-image enhancement, enabled by default and persisted locally
+- pen/canvas handwriting input (draw a formula, recognize it as an image)
+- isolated CPU inference on the UniMERNet backend
+- automatic dark-background inversion and content cropping before recognition
 - Retry and interrupt-by-worker-restart
 - raw and formatted output editors
 - Raw, inline LaTeX, display LaTeX, and SymPy output modes
@@ -53,9 +61,9 @@ The global shortcut can be changed on the Settings page.
 
 The full parity checklist for the original pix2tex GUI is in `docs/design/original-gui-parity.md`.
 
-The possible future evaluation of `PP-FormulaNet_plus-M` is recorded in
-`docs/design/model-backend-evaluation.md`. The current backend remains pix2tex;
-no Paddle migration has been approved or performed.
+The backend decision history is recorded in `docs/design/model-backend-evaluation.md`.
+The 2.0 backend is UniMERNet; PaddleOCR/`PP-FormulaNet` was evaluated and rejected to
+avoid pulling a second heavy runtime into the torch-based app.
 
 ## Verification
 
