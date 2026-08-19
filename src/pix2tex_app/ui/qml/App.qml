@@ -418,6 +418,7 @@ ApplicationWindow {
 
                                     Item {
                                         id: drawBoard
+                                        objectName: "drawBoard"
                                         anchors.fill: parent
                                         visible: window.drawMode
                                         z: 50
@@ -483,6 +484,7 @@ ApplicationWindow {
 
                                             MouseArea {
                                                 id: drawArea
+                                                objectName: "drawArea"
                                                 anchors.fill: parent
                                                 hoverEnabled: true
                                                 cursorShape: drawBoard.erasing ? Qt.BlankCursor : Qt.CrossCursor
@@ -547,6 +549,7 @@ ApplicationWindow {
                                                 onClicked: drawBoard.clearBoard()
                                             }
                                             IconButton {
+                                                objectName: "drawRecognizeButton"
                                                 iconPath: "M3 7V5a2 2 0 0 1 2-2h2 M17 3h2a2 2 0 0 1 2 2v2 M21 17v2a2 2 0 0 1-2 2h-2 M7 21H5a2 2 0 0 1-2-2v-2 M7 12h10"
                                                 primary: true
                                                 buttonEnabled: drawBoard.strokes.length > 0 && !appController.busy

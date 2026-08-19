@@ -17,8 +17,27 @@ worker_entrypoint = source_root / "pix2tex_app" / "worker_entry.py"
 # imported dynamically, so pull all submodules and its bundled yaml configs.
 unimernet_datas = collect_data_files("unimernet")
 metadata_datas = []
-for distribution in ("unimernet", "transformers", "timm", "torch", "torchvision"):
+for distribution in (
+    "unimernet",
+    "transformers",
+    "timm",
+    "torch",
+    "torchvision",
+    "PySide6",
+    "Pillow",
+    "sympy",
+    "lark",
+):
     metadata_datas += copy_metadata(distribution)
+
+# AutoModel's lazy registry enumerates every configuration mapping before it
+# chooses the configured vision model. PyInstaller cannot see those dynamic
+# imports, so collect the configuration family explicitly (rather than every
+# Transformers model implementation).
+transformers_all_submodules = collect_submodules("transformers.models")
+transformers_configuration_hiddenimports = [
+    name for name in transformers_all_submodules if ".configuration_" in name
+]
 
 # Bundle the tiny weights so the frozen worker's package-local default resolves
 # (worker._model_dir -> pix2tex_app/models/unimernet_tiny). The weights live
@@ -33,18 +52,22 @@ weight_datas = [
     if item.is_file()
 ]
 
-common_datas = [
+main_datas = [
     (str(source_root / "pix2tex_app" / "ui"), "pix2tex_app/ui"),
+]
+worker_datas = [
     *unimernet_datas,
     *weight_datas,
     *metadata_datas,
 ]
-common_hiddenimports = [
+main_hiddenimports = []
+worker_hiddenimports = [
     "antlr4",
     "transformers",
     "timm",
     "cv2",
     "albumentations",
+    *transformers_configuration_hiddenimports,
     *collect_submodules("unimernet"),
 ]
 
@@ -70,8 +93,8 @@ main_analysis = Analysis(
     [str(entrypoint)],
     pathex=[str(source_root)],
     binaries=[],
-    datas=common_datas,
-    hiddenimports=common_hiddenimports,
+    datas=main_datas,
+    hiddenimports=main_hiddenimports,
     excludes=common_excludes,
     noarchive=False,
     optimize=1,
@@ -98,8 +121,8 @@ worker_analysis = Analysis(
     [str(worker_entrypoint)],
     pathex=[str(source_root)],
     binaries=[],
-    datas=common_datas,
-    hiddenimports=common_hiddenimports,
+    datas=worker_datas,
+    hiddenimports=worker_hiddenimports,
     excludes=common_excludes,
     noarchive=False,
     optimize=1,
