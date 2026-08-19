@@ -1,11 +1,25 @@
+param([string]$RuntimeRoot = '')
+
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$python = Join-Path $projectRoot 'runtime\build_env\python.exe'
+if (-not $RuntimeRoot) {
+    $RuntimeRoot = if ($env:PIX2TEX_RUNTIME_ROOT) { $env:PIX2TEX_RUNTIME_ROOT } else { Join-Path $projectRoot 'runtime' }
+}
+$python = Join-Path $RuntimeRoot 'unimernet_build_env\python.exe'
+$modelDirectory = Join-Path $RuntimeRoot 'unimernet_models\unimernet_tiny'
+$weights = Join-Path $modelDirectory 'unimernet_tiny.pth'
+$expectedWeights = '6F7608624E2D7549C7F0F05FCFBE073AE521328CF70F1D46374D96F9881D7371'
 $spec = Join-Path $projectRoot 'packaging\Pix2TexStudio.spec'
 $buildEnvironment = Split-Path -Parent $python
 
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     throw "Release build environment is missing: $python"
+}
+if (-not (Test-Path -LiteralPath $weights -PathType Leaf)) {
+    throw "UniMERNet weights are missing: $weights"
+}
+if ((Get-FileHash -LiteralPath $weights -Algorithm SHA256).Hash -ne $expectedWeights) {
+    throw 'UniMERNet model hash verification failed'
 }
 
 Push-Location $projectRoot
@@ -18,6 +32,8 @@ try {
         (Join-Path $env:SystemRoot 'System32')
         $env:SystemRoot
     ) -join ';'
+    $env:NO_ALBUMENTATIONS_UPDATE = '1'
+    $env:PIX2TEX_UNIMERNET_MODEL_DIR = $modelDirectory
     & $python '.\scripts\create-app-icon.py'
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     & $python -m PyInstaller --noconfirm --clean $spec
