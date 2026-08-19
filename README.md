@@ -2,11 +2,11 @@
 
 Pix2Tex Studio is a local-first Windows desktop application for turning formula screenshots, images, and handwriting into editable LaTeX. It is CPU-only by default.
 
-> **2.0 (in development):** the recognition backend has moved from pix2tex to
+> **2.0.0rc1 candidate:** the recognition backend has moved from pix2tex to
 > [UniMERNet](https://github.com/opendatalab/UniMERNet) (Apache-2.0), which also
 > covers handwriting. A pen/canvas input mode and automatic dark-background
-> handling were added. The frozen `1.0.0rc1` (pix2tex) release below is unchanged.
-> The 2.0 dev runtime lives under `runtime/unimernet_env`.
+> handling were added. The public `1.0.0rc1` (pix2tex) release remains unchanged
+> while this candidate completes Windows acceptance.
 
 This is an independent community project. The 1.0 line was built around
 [pix2tex/LaTeX-OCR](https://github.com/lukas-blecher/LaTeX-OCR); 2.0 is built around
@@ -20,7 +20,7 @@ Download the latest Windows installer from
 installer contains the CPU inference runtime and model weights, so Anaconda,
 Python, CUDA, and an internet connection are not required at runtime.
 
-The current `1.0.0rc1` installer is unsigned. Windows may therefore display a
+The Windows installer is unsigned. Windows may therefore display a
 SmartScreen warning. Verify the SHA-256 value published with the release before
 running it.
 
@@ -74,8 +74,9 @@ avoid pulling a second heavy runtime into the torch-based app.
 
 ## Release build
 
-The release uses a separate CPU-only build environment and never packages the rollback
-`runtime/pix2tex_env` directory directly.
+The release uses a separate CPU-only `unimernet_build_env` and never packages
+the development environment directly. An external runtime root may be supplied
+with `-RuntimeRoot` or `PIX2TEX_RUNTIME_ROOT`.
 
 ```powershell
 .\scripts\build-portable.ps1
@@ -90,10 +91,10 @@ Python, and preserves local history/settings when uninstalled.
 
 ## Release status
 
-The feature set is frozen as `1.0.0rc1`. A standalone build and installer now exist.
+The second-generation feature set is frozen as the local `2.0.0rc1` candidate.
 Release gates and current blockers are
 tracked in `docs/release/FREEZE.md`; the frozen OCR and Windows protocol is in
-`docs/release/ACCEPTANCE.md`. The candidate is not a final 1.0 release until
+`docs/release/ACCEPTANCE.md`. The candidate is not a final 2.0 release until
 those gates pass.
 
 ## Licensing and attribution

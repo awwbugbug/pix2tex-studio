@@ -1,0 +1,5 @@
+Package: streamlit
+Version: 1.61.1
+Declared license: not stated in installed metadata
+
+No standalone license file was present in the installed wheel metadata.

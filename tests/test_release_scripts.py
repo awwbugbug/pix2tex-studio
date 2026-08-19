@@ -32,6 +32,22 @@ class ReleaseScriptContractTests(unittest.TestCase):
         self.assertIn("non-deterministic LaTeX", script)
         self.assertIn("Worker produced no event", script)
 
+    def test_second_generation_scripts_use_the_unimernet_runtime(self) -> None:
+        for name in (
+            "build-installer.ps1",
+            "create-release-manifest.ps1",
+            "evaluate-formulas.ps1",
+            "render-preview.ps1",
+        ):
+            with self.subTest(script=name):
+                script = self._script(name)
+                self.assertNotIn(r"runtime\pix2tex_env", script)
+                self.assertIn("RuntimeRoot", script)
+
+        manifest = self._script("create-release-manifest.ps1")
+        self.assertIn(r"pix2tex_app\models\unimernet_tiny", manifest)
+        self.assertNotIn(r"pix2tex\model\checkpoints", manifest)
+
 
 if __name__ == "__main__":
     unittest.main()

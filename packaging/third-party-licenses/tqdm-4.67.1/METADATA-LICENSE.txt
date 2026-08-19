@@ -1,7 +1,0 @@
-Package: tqdm
-Version: 4.67.1
-Declared license: MPL-2.0 AND MIT
-License :: OSI Approved :: MIT License
-License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)
-
-No standalone license file was present in the installed wheel metadata.

@@ -1,41 +1,36 @@
-# 1.0.0rc1 acceptance status
+# 2.0.0rc1 acceptance status
 
-Updated: 2026-08-11
+Updated: 2026-08-20
 
-## Passed
+## Passed before the versioned rebuild
 
 | Area | Evidence |
 | --- | --- |
-| Source regression | 26/26 tests in the rollback runtime and isolated release build environment |
-| Frozen GUI | GUI-subsystem EXE, QML smoke exit 0, no foreign Conda ICU DLLs |
-| Frozen OCR | Package-local weights, exact smoke prediction, 0.199-0.241 s inference |
-| Worker stability | 25/25 consecutive predictions, 0 errors, p95 0.171 s |
-| Normal desktop flow | one worker, 8.85 s ready, single-instance restore, close-to-tray |
-| Offline install | invalid HTTP/HTTPS proxy plus offline flags; GUI and OCR still passed |
-| Installer | per-user install and uninstall exit 0; shortcuts and registry verified |
-| Chinese path | install, GUI, OCR, and uninstall passed under `安装测试\Pix2Tex Studio` |
-| DPI | 125% and 200% rendered and visually checked without clipping or overlap |
-| User data | uninstall removed program state but preserved `%LOCALAPPDATA%\Reasonix\Pix2TexStudio` |
-| Licensing | 55 locked runtime distributions represented; PySide/Qt and MathJax terms included |
+| Source regression | 56/56 automated tests passed |
+| Build isolation | Python 3.10.20 build prefix; runtime lock matches; `pip check` passed |
+| Model integrity | UniMERNet tiny weights matched the frozen SHA-256 |
+| Clean portable build | PyInstaller completed from the short Windows worktree |
+| Frozen GUI | GUI smoke exit 0 |
+| Frozen Worker | Offline ready event, nonblank single-image result, clean shutdown |
+| Worker stability sample | 3/3 deterministic predictions, zero errors |
+| Handwriting pipeline | Simulated pen stroke saved to PNG and accepted as current input |
+| Licensing generation | 183 locked distributions plus one MathJax override represented |
 
-## Measured artifacts
+Latest pre-version-rebuild measurements:
 
-- Notice-bearing portable directory: 1,429,739,639 bytes, 8,905 files.
-- Zero-warning notice-bearing NSIS installer: 466,976,568 bytes.
-- Installer SHA-256: `19CD4A71A16AFC8B412C3A0368DEEAEBF78DC5F003EC5410A9ECE9E45645402A`.
-- Final install: 73.3 seconds; same-path upgrade: 56.39 seconds; uninstall: exit 0.
-- New-directory first model readiness: 26.47-27.02 seconds.
-- Subsequent cold-process readiness: 5.43-6.64 seconds.
+- Notice-bearing portable: 1,935,633,168 bytes, 10,257 files.
+- Packaged Worker readiness: 8.882 seconds on a repeated cold process.
+- Fixture inference: 0.391 seconds.
+- Three-request mean: 0.376 seconds; p95: 0.388 seconds.
 
-All current sizes and SHA-256 values are regenerated in
-`release-evidence/release-manifest.json`.
+These measurements prove the pipeline, not broad recognition accuracy. They
+will be replaced by evidence from the versioned final candidate artifacts.
 
-## Blocked or not yet accepted
+## Pending
 
-1. The frozen 30-image, independently labelled real research formula set does not exist yet.
-   A single regression fixture proves the pipeline and a whitespace fix, not broad OCR accuracy.
-2. This Windows machine exposes only one 2560x1440 display. Multi-monitor and negative-coordinate
-   region capture therefore remain untested.
-3. No Git remote is configured. GitHub publication is deliberately the final step.
-
-The candidate must remain `1.0.0rc1`; it is not honest to tag it `1.0.0` while these gates are open.
+1. Rebuild portable and installer with 2.0.0rc1 Windows metadata.
+2. Run 25-request stability and installed Windows integration checks.
+3. Verify install, same-path upgrade, uninstall, offline use, shortcuts, and user-data preservation.
+4. Freeze and score the independently labelled 2.0 acceptance set.
+5. Test cross-monitor and negative-coordinate capture on suitable hardware.
+6. Commit the final manifest and checksums, then wait for explicit publication authorization.

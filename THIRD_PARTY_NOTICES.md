@@ -9,16 +9,16 @@ Important runtime components include:
 
 | Component | Version | Declared license |
 | --- | ---: | --- |
-| pix2tex | 0.1.4 | MIT |
+| UniMERNet code and tiny model | 0.2.3 | Apache-2.0 |
 | PySide6 / Shiboken6 / Qt | 6.10.1 | LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only |
-| PyTorch | 2.9.1+cpu | BSD-3-Clause |
-| torchvision | 0.24.1+cpu | BSD |
-| Transformers | 4.57.3 | Apache-2.0 |
-| timm | 0.5.4 | Apache-2.0 |
-| OpenCV Python headless | 4.12.0.88 | Apache-2.0 |
-| NumPy | 2.2.6 | BSD-3-Clause and bundled-component notices |
+| PyTorch | 2.13.0 (CPU) | BSD-3-Clause |
+| torchvision | 0.28.0 | BSD |
+| Transformers | 4.42.4 | Apache-2.0 |
+| timm | 0.9.16 | Apache-2.0 |
+| OpenCV Python | 4.11.0.86 | Apache-2.0 |
+| NumPy | 1.26.4 | BSD-3-Clause and bundled-component notices |
 | SciPy | 1.15.3 | BSD-3-Clause and bundled-component notices |
-| Pillow | 12.0.0 | HPND |
+| Pillow | 12.3.0 | HPND |
 | MathJax JavaScript | bundled with the application | Apache-2.0 |
 
 Qt/PySide libraries remain separate dynamically loaded files inside the
