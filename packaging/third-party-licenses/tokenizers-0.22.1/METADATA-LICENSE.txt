@@ -1,6 +1,0 @@
-Package: tokenizers
-Version: 0.22.1
-Declared license: not stated in installed metadata
-License :: OSI Approved :: Apache Software License
-
-No standalone license file was present in the installed wheel metadata.

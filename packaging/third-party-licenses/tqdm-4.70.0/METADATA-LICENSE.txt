@@ -1,0 +1,5 @@
+Package: tqdm
+Version: 4.70.0
+Declared license: MPL-2.0 AND MIT
+
+No standalone license file was present in the installed wheel metadata.

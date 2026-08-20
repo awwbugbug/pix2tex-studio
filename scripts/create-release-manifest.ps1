@@ -1,8 +1,14 @@
+param([string]$RuntimeRoot = '')
+
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
+if (-not $RuntimeRoot) {
+    $RuntimeRoot = if ($env:PIX2TEX_RUNTIME_ROOT) { $env:PIX2TEX_RUNTIME_ROOT } else { Join-Path $projectRoot 'runtime' }
+}
+
 $portableRoot = Join-Path $projectRoot 'dist\Pix2TexStudio'
-$installer = Join-Path $projectRoot 'installer\output\Pix2TexStudio-1.0.0-rc1-Setup.exe'
-$python = Join-Path $projectRoot 'runtime\build_env\python.exe'
+$installer = Join-Path $projectRoot 'installer\output\Pix2TexStudio-2.0.0-rc1-Setup.exe'
+$python = Join-Path $RuntimeRoot 'unimernet_build_env\python.exe'
 $evidenceRoot = Join-Path $projectRoot 'release-evidence'
 
 foreach ($required in @($portableRoot, $installer, $python)) {
@@ -17,20 +23,23 @@ $runtime = $runtimeJson | ConvertFrom-Json
 $licenseManifest = Get-Content (Join-Path $projectRoot 'packaging\third-party-licenses\manifest.json') -Raw | ConvertFrom-Json
 $mainExe = Join-Path $portableRoot 'Pix2TexStudio.exe'
 $workerExe = Join-Path $portableRoot 'Pix2TexWorker.exe'
-$weights = Join-Path $portableRoot '_internal\pix2tex\model\checkpoints\weights.pth'
-$resizer = Join-Path $portableRoot '_internal\pix2tex\model\checkpoints\image_resizer.pth'
-$gitCommit = if (Test-Path (Join-Path $projectRoot '.git')) {
-    (git -C $projectRoot rev-parse HEAD 2>$null)
-} else { $null }
+$modelRoot = Join-Path $portableRoot '_internal\pix2tex_app\models\unimernet_tiny'
+$weights = Join-Path $modelRoot 'unimernet_tiny.pth'
+$modelFiles = @(Get-ChildItem -LiteralPath $modelRoot -File)
+$gitCommit = git -C $projectRoot rev-parse HEAD 2>$null
+if ($LASTEXITCODE -ne 0) { $gitCommit = $null }
+$mainExeSha256 = (Get-FileHash -LiteralPath $mainExe -Algorithm SHA256).Hash
+$workerExeSha256 = (Get-FileHash -LiteralPath $workerExe -Algorithm SHA256).Hash
+$installerSha256 = (Get-FileHash -LiteralPath $installerItem.FullName -Algorithm SHA256).Hash
 
 $manifest = [ordered]@{
     generated_at = (Get-Date).ToString('o')
-    version = '1.0.0rc1'
-    release_status = 'candidate-blocked-on-ocr-and-multimonitor-acceptance'
+    version = '2.0.0rc1'
+    release_status = 'local-candidate-awaiting-final-acceptance'
     platform = [System.Environment]::OSVersion.VersionString
     git_commit = $gitCommit
     automated_tests = [ordered]@{
-        count = 26
+        count = 58
         status = 'passed'
     }
     runtime = $runtime
@@ -38,19 +47,21 @@ $manifest = [ordered]@{
         path = $portableRoot
         file_count = $portableFiles.Count
         bytes = ($portableFiles | Measure-Object Length -Sum).Sum
-        main_exe_sha256 = (Get-FileHash -LiteralPath $mainExe -Algorithm SHA256).Hash
-        worker_exe_sha256 = (Get-FileHash -LiteralPath $workerExe -Algorithm SHA256).Hash
+        main_exe_sha256 = $mainExeSha256
+        worker_exe_sha256 = $workerExeSha256
     }
     model = [ordered]@{
+        name = 'UniMERNet tiny'
+        version = '0.2.3'
+        file_count = $modelFiles.Count
+        bytes = ($modelFiles | Measure-Object Length -Sum).Sum
         weights_bytes = (Get-Item -LiteralPath $weights).Length
         weights_sha256 = (Get-FileHash -LiteralPath $weights -Algorithm SHA256).Hash
-        resizer_bytes = (Get-Item -LiteralPath $resizer).Length
-        resizer_sha256 = (Get-FileHash -LiteralPath $resizer -Algorithm SHA256).Hash
     }
     installer = [ordered]@{
         path = $installerItem.FullName
         bytes = $installerItem.Length
-        sha256 = (Get-FileHash -LiteralPath $installerItem.FullName -Algorithm SHA256).Hash
+        sha256 = $installerSha256
         authenticode_status = (Get-AuthenticodeSignature -LiteralPath $installerItem.FullName).Status.ToString()
     }
     third_party_licenses = [ordered]@{
@@ -62,4 +73,12 @@ $manifest = [ordered]@{
 New-Item -ItemType Directory -Path $evidenceRoot -Force | Out-Null
 $output = Join-Path $evidenceRoot 'release-manifest.json'
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $output -Encoding utf8
-Write-Output $output
+$checksums = Join-Path $evidenceRoot 'SHA256SUMS.txt'
+@(
+    "$installerSha256  $($installerItem.Name)"
+) | Set-Content -LiteralPath $checksums -Encoding ascii
+
+[pscustomobject]@{
+    manifest = $output
+    checksums = $checksums
+}

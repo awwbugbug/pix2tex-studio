@@ -36,6 +36,20 @@ class ControllerTests(unittest.TestCase):
             self.assertEqual(restored.historyModel.rowCount(), 1)
             self.assertEqual(restored.historyModel.entry(0)["formula"], "x^2")
 
+    def test_clear_image_resets_to_initial_state(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            controller = AppController(start_worker=False, data_dir=Path(directory))
+            controller._image_path = str(Path(directory) / "x.png")
+            controller._set_latex("x^2")
+            controller._last_duration = "0.42s"
+
+            controller.clearImage()
+
+            self.assertEqual(controller.imageUrl, "")
+            self.assertEqual(controller.latex, "")
+            self.assertEqual(controller.formattedLatex, "")
+            self.assertEqual(controller.lastDuration, "—")
+
     def test_history_preview_roles_update_without_polluting_saved_history(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             controller = AppController(start_worker=False, data_dir=Path(directory))
@@ -102,31 +116,36 @@ class ControllerTests(unittest.TestCase):
             controller.setFormatMode("latex-display")
             self.assertEqual(controller.formattedLatex, "$$x^2$$")
 
+    def test_sympy_output_uses_the_runtime_compatible_parser(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            controller = AppController(start_worker=False, data_dir=Path(directory))
+            controller.setLatex(r"\frac{1}{2}")
+            controller.setFormatMode("sympy")
+            self.assertEqual(controller.formattedLatex, "1/2")
+            self.assertEqual(controller.formatError, "")
+
     def test_preferences_persist_in_project_data_dir(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             data_dir = Path(directory)
             controller = AppController(start_worker=False, data_dir=data_dir)
-            controller.setTemperature(0.7)
             controller.setThemeMode("dark")
             controller.setAutoCopy(False)
-            controller.setSmallImageEnhancement(False)
             controller.setGlobalHotkey("Alt+S")
             restored = AppController(start_worker=False, data_dir=data_dir)
-            self.assertAlmostEqual(restored.temperature, 0.7)
             self.assertEqual(restored.themeMode, "dark")
             self.assertFalse(restored.autoCopy)
-            self.assertFalse(restored.smallImageEnhancement)
             self.assertEqual(restored.globalHotkey, "Alt+S")
 
-    def test_prediction_sends_small_image_enhancement_setting(self) -> None:
+    def test_prediction_payload_contains_only_type_id_and_path(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             controller = AppController(start_worker=False, data_dir=Path(directory))
             payloads: list[dict] = []
             controller._engine_state = "ready"
             controller._send = payloads.append
-            controller.setSmallImageEnhancement(False)
             controller._predict("formula.png")
-            self.assertFalse(payloads[0]["small_image_enhancement"])
+            self.assertEqual(payloads[0]["type"], "predict")
+            self.assertEqual(payloads[0]["path"], "formula.png")
+            self.assertEqual(set(payloads[0]), {"type", "id", "path"})
 
     def test_global_hotkey_rejects_an_occupied_replacement(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

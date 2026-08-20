@@ -1,11 +1,36 @@
 param(
     [string]$Worker = '',
     [string]$Fixture = '',
-    [string]$Expected = 'e^{i\pi}+1=0',
+    [string]$Expected = '',
     [int]$Count = 25
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Read-WorkerEvent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Diagnostics.Process]$Process,
+        [int]$TimeoutMilliseconds = 60000
+    )
+
+    $readTask = $Process.StandardOutput.ReadLineAsync()
+    if (-not $readTask.Wait($TimeoutMilliseconds)) {
+        throw "Worker produced no event within $TimeoutMilliseconds ms"
+    }
+    $line = $readTask.Result
+    if ([string]::IsNullOrWhiteSpace($line)) {
+        $stderr = if ($Process.HasExited) { $Process.StandardError.ReadToEnd() } else { '' }
+        throw "Worker exited before returning an event. $stderr"
+    }
+    try {
+        return $line | ConvertFrom-Json
+    }
+    catch {
+        throw "Worker returned invalid JSON: $line"
+    }
+}
+
 $projectRoot = Split-Path -Parent $PSScriptRoot
 if (-not $Worker) {
     $Worker = Join-Path $projectRoot 'dist\Pix2TexStudio\Pix2TexWorker.exe'
@@ -25,30 +50,46 @@ $startInfo.RedirectStandardInput = $true
 $startInfo.RedirectStandardOutput = $true
 $startInfo.RedirectStandardError = $true
 $startInfo.Environment['NO_ALBUMENTATIONS_UPDATE'] = '1'
+$startInfo.Environment['HF_HUB_OFFLINE'] = '1'
+$startInfo.Environment['TRANSFORMERS_OFFLINE'] = '1'
+$startInfo.Environment['HTTP_PROXY'] = 'http://127.0.0.1:9'
+$startInfo.Environment['HTTPS_PROXY'] = 'http://127.0.0.1:9'
 $workerProcess = [System.Diagnostics.Process]::new()
 $workerProcess.StartInfo = $startInfo
 [void]$workerProcess.Start()
-$ready = $workerProcess.StandardOutput.ReadLine() | ConvertFrom-Json
 $latencies = [System.Collections.Generic.List[double]]::new()
 $errors = [System.Collections.Generic.List[string]]::new()
+$baselineLatex = ''
 
 try {
+    $ready = Read-WorkerEvent -Process $workerProcess
+    if ($ready.type -ne 'ready') {
+        throw "Worker failed to become ready: $($ready | ConvertTo-Json -Compress)"
+    }
     for ($index = 1; $index -le $Count; $index++) {
         $request = @{
             type = 'predict'
             id = "stability-$index"
             path = $fixturePath
-            temperature = 0.3
-            small_image_enhancement = $true
         } | ConvertTo-Json -Compress
         $workerProcess.StandardInput.WriteLine($request)
         $workerProcess.StandardInput.Flush()
-        $event = $workerProcess.StandardOutput.ReadLine() | ConvertFrom-Json
+        $event = Read-WorkerEvent -Process $workerProcess
         if ($event.type -ne 'result') {
             $errors.Add("$index`: worker event $($event.type): $($event.message)")
             continue
         }
-        if ([string]$event.latex -ne $Expected) {
+        $latex = [string]$event.latex
+        if ([string]::IsNullOrWhiteSpace($latex)) {
+            $errors.Add("$index`: worker returned blank LaTeX")
+        }
+        if ($index -eq 1) {
+            $baselineLatex = $latex
+        }
+        elseif ($latex -ne $baselineLatex) {
+            $errors.Add("$index`: non-deterministic LaTeX $latex")
+        }
+        if ($Expected -and $latex -ne $Expected) {
             $errors.Add("$index`: unexpected LaTeX $($event.latex)")
         }
         $latencies.Add([double]$event.seconds)

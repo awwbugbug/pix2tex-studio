@@ -2,6 +2,31 @@
 
 All notable changes to Pix2Tex Studio are recorded here.
 
+## [Unreleased] - 2.0.0-dev
+
+### Changed
+
+- Replaced the pix2tex 0.1.4 backend with UniMERNet (image→LaTeX, CPU-first,
+  bundled `unimernet_tiny`); the OCR worker keeps the same JSONL contract, so the
+  rest of the app is unchanged. Runs from an isolated `runtime/unimernet_env`.
+- Removed the pix2tex-specific Temperature control and small-image-enhancement
+  toggle from the UI and controller.
+
+### Added
+
+- Pen/canvas handwriting input: draw a formula and recognize it through the same
+  image pipeline (pen/eraser tools with a circle eraser cursor, undo, clear).
+- Automatic dark-background inversion and content cropping in the worker, fixing
+  poor recognition of black-background formulas (also present in 1.0's capture).
+- Post-processing that drops layout-only `\limits`/`\nolimits` so handwritten
+  integrals/sums render compactly.
+
+### Fixed
+
+- Region capture no longer bakes the overlay's white selection border into the
+  saved image (it grabbed the composited screen); it now crops from a clean
+  pre-capture, which was the main cause of dark-background recognition failures.
+
 ## [1.0.0rc1] - 2026-08-11
 
 ### Release freeze

@@ -1,7 +1,8 @@
+import os
 from pathlib import Path
 import sys
 
-from PyInstaller.utils.hooks import collect_data_files, copy_metadata
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy_metadata
 
 
 sys.setrecursionlimit(sys.getrecursionlimit() * 5)
@@ -12,26 +13,62 @@ source_root = project_root / "src"
 entrypoint = source_root / "pix2tex_app" / "__main__.py"
 worker_entrypoint = source_root / "pix2tex_app" / "worker_entry.py"
 
-pix2tex_datas = collect_data_files("pix2tex")
+# UniMERNet is a LAVIS-style registry package: its models/tasks/processors are
+# imported dynamically, so pull all submodules and its bundled yaml configs.
+unimernet_datas = collect_data_files("unimernet")
 metadata_datas = []
-for distribution in ("pix2tex", "transformers", "timm", "torch", "torchvision"):
+for distribution in (
+    "unimernet",
+    "transformers",
+    "timm",
+    "torch",
+    "torchvision",
+    "PySide6",
+    "Pillow",
+    "sympy",
+    "lark",
+):
     metadata_datas += copy_metadata(distribution)
 
-common_datas = [
+# AutoModel's lazy registry enumerates every configuration mapping before it
+# chooses the configured vision model. PyInstaller cannot see those dynamic
+# imports, so collect the configuration family explicitly (rather than every
+# Transformers model implementation).
+transformers_all_submodules = collect_submodules("transformers.models")
+transformers_configuration_hiddenimports = [
+    name for name in transformers_all_submodules if ".configuration_" in name
+]
+
+# Bundle the tiny weights so the frozen worker's package-local default resolves
+# (worker._model_dir -> pix2tex_app/models/unimernet_tiny). The weights live
+# outside the worktree, so allow an env override and fall back to runtime/.
+model_dir = Path(
+    os.environ.get("PIX2TEX_UNIMERNET_MODEL_DIR")
+    or (project_root / "runtime" / "unimernet_models" / "unimernet_tiny")
+)
+weight_datas = [
+    (str(item), "pix2tex_app/models/unimernet_tiny")
+    for item in model_dir.iterdir()
+    if item.is_file()
+]
+
+main_datas = [
     (str(source_root / "pix2tex_app" / "ui"), "pix2tex_app/ui"),
-    *pix2tex_datas,
+]
+worker_datas = [
+    *unimernet_datas,
+    *weight_datas,
     *metadata_datas,
 ]
-common_hiddenimports = [
+main_hiddenimports = []
+worker_hiddenimports = [
     "antlr4",
-    "latex2sympy2",
-    "pix2tex.cli",
-    "pix2tex.dataset.transforms",
-    "pix2tex.models",
-    "pix2tex.utils",
-    "timm.models.resnetv2",
     "transformers",
-    "x_transformers",
+    "timm",
+    "cv2",
+    "albumentations",
+    *transformers_configuration_hiddenimports,
+    *collect_submodules("unimernet"),
 ]
 
 
@@ -40,13 +77,25 @@ def without_foreign_conda_icu(entries):
     blocked = {"icuuc.dll", "icudt73.dll"}
     return [entry for entry in entries if str(entry[0]).lower() not in blocked]
 
+common_excludes = [
+    "PyQt5",
+    "PyQt6",
+    "tkinter",
+    "tensorflow",
+    "wandb",
+    "streamlit",
+    "IPython",
+    "notebook",
+    "jupyterlab",
+]
+
 main_analysis = Analysis(
     [str(entrypoint)],
     pathex=[str(source_root)],
     binaries=[],
-    datas=common_datas,
-    hiddenimports=common_hiddenimports,
-    excludes=["PyQt5", "PyQt6", "tkinter", "tensorflow", "wandb"],
+    datas=main_datas,
+    hiddenimports=main_hiddenimports,
+    excludes=common_excludes,
     noarchive=False,
     optimize=1,
 )
@@ -72,9 +121,9 @@ worker_analysis = Analysis(
     [str(worker_entrypoint)],
     pathex=[str(source_root)],
     binaries=[],
-    datas=common_datas,
-    hiddenimports=common_hiddenimports,
-    excludes=["PyQt5", "PyQt6", "tkinter", "tensorflow", "wandb"],
+    datas=worker_datas,
+    hiddenimports=worker_hiddenimports,
+    excludes=common_excludes,
     noarchive=False,
     optimize=1,
 )

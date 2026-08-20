@@ -1,6 +1,25 @@
 # Formula recognition backend evaluation
 
-## Current decision
+## 2.0 decision (2026-08-19): pix2tex → UniMERNet (approved)
+
+The 2.0 line replaces the pix2tex 0.1.4 backend with **UniMERNet** (PyTorch, image→LaTeX,
+covering printed/screenshot/scanned/handwritten formulas), CPU-first. This is a full
+replacement, not a coexisting backend; there is no pix2tex fallback in the running 2.0 app.
+
+- The OCR worker keeps the same QProcess/JSONL contract, so capture, preview, formatting,
+  history, clipboard, tray, and shortcuts are unchanged.
+- Bundled weight tier is `unimernet_tiny`. tiny/small/base were compared on CPU; larger
+  UniMERNet sizes were **not** reliably better on real handwriting and are slower/heavier,
+  so size is not the lever for handwriting-layout quality (that is a model-family trait —
+  UniMERNet is a fixed image→LaTeX model with no prompt steering).
+- Runtime isolation: 1.0's `runtime/pix2tex_env` stays as a rollback baseline; the 2.0 stack
+  lives in a separate `runtime/unimernet_env`.
+- PaddleOCR/PaddleX/`PP-FormulaNet` were rejected for 2.0 to avoid dragging a second heavy
+  (Paddle) runtime into a torch-based app.
+
+The pre-2.0 evaluation notes below are retained for history.
+
+## Historical evaluation (pre-2.0)
 
 - Keep the existing CPU-only pix2tex 0.1.4 backend as the application default.
 - Do not install PaddleOCR/PaddleX or remove the current pix2tex runtime yet.

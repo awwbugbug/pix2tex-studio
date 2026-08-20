@@ -1,6 +1,11 @@
+param([string]$RuntimeRoot = '')
+
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$targetParent = Join-Path $projectRoot 'runtime\build_tools'
+if (-not $RuntimeRoot) {
+    $RuntimeRoot = if ($env:PIX2TEX_RUNTIME_ROOT) { $env:PIX2TEX_RUNTIME_ROOT } else { Join-Path $projectRoot 'runtime' }
+}
+$targetParent = Join-Path $RuntimeRoot 'build_tools'
 $target = Join-Path $targetParent 'nsis-3.12'
 $makensis = Join-Path $target 'makensis.exe'
 $expectedSha256 = '56581f90db321581c5381193d796fffcf2d24b2f8fed2160a6c6a3baa67f2c4f'

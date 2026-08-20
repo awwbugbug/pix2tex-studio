@@ -20,6 +20,7 @@ ApplicationWindow {
     property int pageIndex: 0
     property int editorIndex: 0
     property real imageScale: 1.0
+    property bool drawMode: false
     property string pendingWindowAction: ""
     property bool restoringFromMinimized: false
     readonly property bool maximized: visibility === Window.Maximized
@@ -107,7 +108,6 @@ ApplicationWindow {
         enabled: appController.globalHotkey !== "Ctrl+A"
                  && !rawEditor.activeFocus
                  && !formattedEditor.activeFocus
-                 && !temperatureField.activeFocus
         onActivated: appController.captureFormula()
     }
 
@@ -416,6 +416,148 @@ ApplicationWindow {
                                         }
                                     }
 
+                                    Item {
+                                        id: drawBoard
+                                        objectName: "drawBoard"
+                                        anchors.fill: parent
+                                        visible: window.drawMode
+                                        z: 50
+
+                                        property var strokes: []
+                                        property var activeStroke: []
+                                        property real penWidth: 3
+                                        property real eraserWidth: 18
+                                        property bool erasing: false
+
+                                        onVisibleChanged: if (visible) erasing = false
+
+                                        function repaint() { inkCanvas.requestPaint() }
+                                        function clearBoard() { strokes = []; activeStroke = []; repaint() }
+                                        function undo() { var a = strokes.slice(); a.pop(); strokes = a; repaint() }
+                                        function recognize() {
+                                            inkSurface.grabToImage(function(result) {
+                                                var path = appController.canvasImagePath()
+                                                if (result.saveToFile(path)) {
+                                                    appController.openPath(path)
+                                                    window.drawMode = false
+                                                }
+                                            })
+                                        }
+
+                                        Item {
+                                            id: inkSurface
+                                            anchors.fill: parent
+
+                                            Rectangle { anchors.fill: parent; color: "white" }
+
+                                            Canvas {
+                                                id: inkCanvas
+                                                anchors.fill: parent
+                                                onPaint: {
+                                                    const ctx = getContext("2d")
+                                                    ctx.clearRect(0, 0, width, height)
+                                                    ctx.lineCap = "round"
+                                                    ctx.lineJoin = "round"
+                                                    const strokes = drawBoard.strokes
+                                                    for (let s = 0; s <= strokes.length; ++s) {
+                                                        const active = s === strokes.length
+                                                        const pts = active ? drawBoard.activeStroke : strokes[s].points
+                                                        const erase = active ? drawBoard.erasing : strokes[s].erase
+                                                        if (!pts || pts.length === 0) continue
+                                                        const w = erase ? drawBoard.eraserWidth : drawBoard.penWidth
+                                                        ctx.strokeStyle = erase ? "white" : "black"
+                                                        ctx.fillStyle = erase ? "white" : "black"
+                                                        ctx.lineWidth = w
+                                                        if (pts.length === 1) {
+                                                            ctx.beginPath()
+                                                            ctx.arc(pts[0].x, pts[0].y, w / 2, 0, 2 * Math.PI)
+                                                            ctx.fill()
+                                                            continue
+                                                        }
+                                                        ctx.beginPath()
+                                                        ctx.moveTo(pts[0].x, pts[0].y)
+                                                        for (let i = 1; i < pts.length; ++i) ctx.lineTo(pts[i].x, pts[i].y)
+                                                        ctx.stroke()
+                                                    }
+                                                }
+                                            }
+
+                                            MouseArea {
+                                                id: drawArea
+                                                objectName: "drawArea"
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: drawBoard.erasing ? Qt.BlankCursor : Qt.CrossCursor
+                                                onPressed: mouse => { drawBoard.activeStroke = [{ x: mouse.x, y: mouse.y }]; inkCanvas.requestPaint() }
+                                                onPositionChanged: mouse => {
+                                                    if (!pressed) return
+                                                    var s = drawBoard.activeStroke.slice()
+                                                    s.push({ x: mouse.x, y: mouse.y })
+                                                    drawBoard.activeStroke = s
+                                                    inkCanvas.requestPaint()
+                                                }
+                                                onReleased: {
+                                                    if (drawBoard.activeStroke.length > 0) {
+                                                        var a = drawBoard.strokes.slice()
+                                                        a.push({ points: drawBoard.activeStroke, erase: drawBoard.erasing })
+                                                        drawBoard.strokes = a
+                                                        drawBoard.activeStroke = []
+                                                        inkCanvas.requestPaint()
+                                                    }
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                id: eraserCursor
+                                                visible: drawBoard.erasing && drawArea.containsMouse
+                                                width: drawBoard.eraserWidth
+                                                height: drawBoard.eraserWidth
+                                                radius: width / 2
+                                                color: "transparent"
+                                                border.color: "#7A7A7A"
+                                                border.width: 1
+                                                x: drawArea.mouseX - width / 2
+                                                y: drawArea.mouseY - height / 2
+                                                z: 5
+                                            }
+                                        }
+
+                                        Row {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            anchors.bottom: parent.bottom
+                                            anchors.bottomMargin: 12
+                                            spacing: 8
+                                            IconButton {
+                                                iconPath: "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z M15 5l4 4"
+                                                primary: !drawBoard.erasing
+                                                onClicked: drawBoard.erasing = false
+                                            }
+                                            IconButton {
+                                                iconPath: "m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21 M22 21H7 M5 11l9 9"
+                                                primary: drawBoard.erasing
+                                                onClicked: drawBoard.erasing = true
+                                            }
+                                            IconButton {
+                                                iconPath: "M9 14 4 9l5-5 M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"
+                                                buttonEnabled: drawBoard.strokes.length > 0
+                                                onClicked: drawBoard.undo()
+                                            }
+                                            IconButton {
+                                                iconPath: "M3 6h18 M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6 M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2 M10 11V17 M14 11V17"
+                                                danger: true
+                                                buttonEnabled: drawBoard.strokes.length > 0
+                                                onClicked: drawBoard.clearBoard()
+                                            }
+                                            IconButton {
+                                                objectName: "drawRecognizeButton"
+                                                iconPath: "M3 7V5a2 2 0 0 1 2-2h2 M17 3h2a2 2 0 0 1 2 2v2 M21 17v2a2 2 0 0 1-2 2h-2 M7 21H5a2 2 0 0 1-2-2v-2 M7 12h10"
+                                                primary: true
+                                                buttonEnabled: drawBoard.strokes.length > 0 && !appController.busy
+                                                onClicked: drawBoard.recognize()
+                                            }
+                                        }
+                                    }
+
                                     DropArea {
                                         id: sourceDropArea
                                         anchors.fill: parent
@@ -453,61 +595,62 @@ ApplicationWindow {
                                             onClicked: appController.captureFormula()
                                         }
                                         ActionButton { text: "重试"; enabled: appController.imageUrl.length > 0 && !appController.busy; onClicked: appController.predictCurrent() }
+                                        ActionButton { text: "清空"; enabled: appController.imageUrl.length > 0 && !appController.busy; onClicked: appController.clearImage() }
                                         Item { Layout.fillWidth: true }
-                                        Text { text: "Temperature"; color: Theme.inkMuted; font.family: Theme.uiFont; font.pixelSize: 9 }
+
                                         Rectangle {
-                                            Layout.preferredWidth: 86
-                                            Layout.preferredHeight: 28
-                                            color: Theme.panel
-                                            border.color: temperatureField.activeFocus ? Theme.inkSoft : Theme.line
+                                            id: penToggle
+                                            Layout.preferredWidth: 30
+                                            Layout.preferredHeight: 30
                                             radius: Theme.radius
-                                            Behavior on border.color { ColorAnimation { duration: 120 } }
+                                            color: window.drawMode ? (penMouse.containsMouse ? Theme.primaryHover : Theme.primary)
+                                                                   : (penMouse.containsMouse ? Theme.surfaceHigh : Theme.panel)
+                                            border.width: window.drawMode ? 0 : 1
+                                            border.color: Theme.line
+                                            scale: penMouse.pressed ? 0.965 : penMouse.containsMouse ? 1.015 : 1.0
+                                            Behavior on color { ColorAnimation { duration: 120 } }
+                                            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
 
-                                            RowLayout {
+                                            Canvas {
+                                                id: penIcon
+                                                anchors.centerIn: parent
+                                                width: 20
+                                                height: 20
+                                                // upright while drawing, tilted at rest
+                                                rotation: window.drawMode ? 0 : 40
+                                                Behavior on rotation { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                                                onPaint: {
+                                                    const ctx = getContext("2d")
+                                                    ctx.clearRect(0, 0, width, height)
+                                                    ctx.strokeStyle = window.drawMode ? Theme.primaryForeground : Theme.ink
+                                                    ctx.lineWidth = 1.0
+                                                    ctx.lineCap = "round"
+                                                    ctx.lineJoin = "round"
+                                                    // slim pencil outline: eraser end, body, tip
+                                                    ctx.beginPath()
+                                                    ctx.moveTo(8, 3.5)
+                                                    ctx.lineTo(12, 3.5)
+                                                    ctx.lineTo(12, 13)
+                                                    ctx.lineTo(10, 17)
+                                                    ctx.lineTo(8, 13)
+                                                    ctx.closePath()
+                                                    ctx.stroke()
+                                                    // collar line at the tip base
+                                                    ctx.beginPath()
+                                                    ctx.moveTo(8, 13)
+                                                    ctx.lineTo(12, 13)
+                                                    ctx.stroke()
+                                                }
+                                                Connections { target: window; function onDrawModeChanged() { penIcon.requestPaint() } }
+                                                Connections { target: Theme; function onDarkChanged() { penIcon.requestPaint() } }
+                                            }
+
+                                            MouseArea {
+                                                id: penMouse
                                                 anchors.fill: parent
-                                                anchors.margins: 2
-                                                spacing: 0
-
-                                                StepButton {
-                                                    Layout.preferredWidth: 22
-                                                    Layout.preferredHeight: 22
-                                                    enabled: appController.temperature > 0
-                                                    onClicked: appController.setTemperature(Math.max(0, appController.temperature - 0.1))
-                                                }
-
-                                                TextInput {
-                                                    id: temperatureField
-                                                    Layout.fillWidth: true
-                                                    Layout.fillHeight: true
-                                                    color: Theme.ink
-                                                    font.family: Theme.monoFont
-                                                    font.pixelSize: 10
-                                                    horizontalAlignment: Qt.AlignHCenter
-                                                    verticalAlignment: Qt.AlignVCenter
-                                                    selectByMouse: true
-                                                    validator: DoubleValidator { bottom: 0; top: 1; decimals: 2; notation: DoubleValidator.StandardNotation }
-                                                    inputMethodHints: Qt.ImhFormattedNumbersOnly
-                                                    onEditingFinished: {
-                                                        const parsed = Number(text)
-                                                        if (!isNaN(parsed)) appController.setTemperature(parsed)
-                                                    }
-
-                                                    Binding {
-                                                        target: temperatureField
-                                                        property: "text"
-                                                        value: Number(appController.temperature).toFixed(2)
-                                                        when: !temperatureField.activeFocus
-                                                        restoreMode: Binding.RestoreBindingOrValue
-                                                    }
-                                                }
-
-                                                StepButton {
-                                                    plus: true
-                                                    Layout.preferredWidth: 22
-                                                    Layout.preferredHeight: 22
-                                                    enabled: appController.temperature < 1
-                                                    onClicked: appController.setTemperature(Math.min(1, appController.temperature + 0.1))
-                                                }
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: window.drawMode = !window.drawMode
                                             }
                                         }
                                     }
@@ -971,14 +1114,6 @@ ApplicationWindow {
                                             selected: appController.globalHotkey === "Ctrl+A"
                                             onClicked: appController.setGlobalHotkey("Ctrl+A")
                                         }
-                                    }
-                                }
-                                SettingLine {
-                                    title: "小图自动增强"
-                                    detail: "宽度或高度小于 100 px 时放大，并增强对比度与锐度"
-                                    AnimatedSwitch {
-                                        checked: appController.smallImageEnhancement
-                                        onToggled: appController.setSmallImageEnhancement(checked)
                                     }
                                 }
                                 SettingLine {

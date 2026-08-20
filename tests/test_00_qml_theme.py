@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from PIL import Image
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
@@ -282,6 +284,74 @@ ApplicationWindow {
             QTest.wheelEvent(window, center, QPoint(0, -120))
             QTest.qWait(80)
             self.assertLess(float(window.property("imageScale")), zoomed_scale)
+            window.close()
+            controller.shutdown()
+
+    def test_handwriting_stroke_is_saved_as_the_current_input_image(self) -> None:
+        qml_path = (
+            Path(__file__).resolve().parents[1]
+            / "src"
+            / "pix2tex_app"
+            / "ui"
+            / "qml"
+            / "App.qml"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            controller = AppController(start_worker=False, data_dir=Path(directory))
+            engine = QQmlApplicationEngine()
+            engine.rootContext().setContextProperty("appController", controller)
+            engine.load(QUrl.fromLocalFile(str(qml_path)))
+            self.assertTrue(engine.rootObjects())
+            window = engine.rootObjects()[0]
+            window.setProperty("drawMode", True)
+            QTest.qWait(220)
+
+            draw_board = window.findChild(QQuickItem, "drawBoard")
+            draw_area = window.findChild(QQuickItem, "drawArea")
+            recognize_button = window.findChild(QQuickItem, "drawRecognizeButton")
+            self.assertIsNotNone(draw_board)
+            self.assertIsNotNone(draw_area)
+            self.assertIsNotNone(recognize_button)
+
+            start = draw_area.mapToScene(QPointF(draw_area.width() * 0.35, draw_area.height() * 0.45))
+            end = draw_area.mapToScene(QPointF(draw_area.width() * 0.65, draw_area.height() * 0.55))
+            QTest.mousePress(
+                window,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier,
+                QPoint(round(start.x()), round(start.y())),
+            )
+            QTest.mouseMove(window, QPoint(round(end.x()), round(end.y())), 40)
+            QTest.mouseRelease(
+                window,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier,
+                QPoint(round(end.x()), round(end.y())),
+            )
+            QTest.qWait(100)
+            strokes = draw_board.property("strokes")
+            if hasattr(strokes, "toVariant"):
+                strokes = strokes.toVariant()
+            self.assertGreater(len(strokes), 0)
+
+            button_center = recognize_button.mapToScene(
+                QPointF(recognize_button.width() / 2, recognize_button.height() / 2)
+            )
+            QTest.mouseClick(
+                window,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier,
+                QPoint(round(button_center.x()), round(button_center.y())),
+            )
+            QTest.qWait(500)
+
+            image_path = Path(QUrl(controller.imageUrl).toLocalFile())
+            self.assertTrue(image_path.is_file())
+            self.assertTrue(image_path.name.startswith("drawing-"))
+            self.assertFalse(bool(window.property("drawMode")))
+            with Image.open(image_path) as image:
+                self.assertLess(image.convert("L").getextrema()[0], 250)
+
             window.close()
             controller.shutdown()
 

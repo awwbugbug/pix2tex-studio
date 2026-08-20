@@ -19,6 +19,7 @@ class ScreenCaptureOverlay(QWidget):
         self._begin = QPoint()
         self._end = QPoint()
         self._dragging = False
+        self._clean = None
 
         screen = QGuiApplication.screenAt(QCursor.pos()) or QGuiApplication.primaryScreen()
         if screen is None:
@@ -35,6 +36,10 @@ class ScreenCaptureOverlay(QWidget):
         self.setCursor(Qt.CursorShape.CrossCursor)
 
     def start(self) -> None:
+        # Grab a clean screenshot before the overlay is shown, so the selection
+        # border and dim wash the overlay paints are never captured into the
+        # output image (a white frame there wrecks dark-background recognition).
+        self._clean = self._screen.grabWindow(0)
         self.show()
         self.raise_()
         self.activateWindow()
@@ -101,13 +106,19 @@ class ScreenCaptureOverlay(QWidget):
             self.cancelled.emit()
             return
 
-        pixmap = self._screen.grabWindow(
-            0,
-            selection.x(),
-            selection.y(),
-            selection.width(),
-            selection.height(),
+        # Crop the selection from the clean pre-capture. The clean pixmap is in
+        # device pixels while the selection is in logical coordinates, so scale
+        # by the ratio to stay correct under high-DPI displays.
+        clean = self._clean if self._clean is not None and not self._clean.isNull() else self._screen.grabWindow(0)
+        scale_x = clean.width() / max(1, self._screen.geometry().width())
+        scale_y = clean.height() / max(1, self._screen.geometry().height())
+        device_rect = QRect(
+            round(selection.x() * scale_x),
+            round(selection.y() * scale_y),
+            round(selection.width() * scale_x),
+            round(selection.height() * scale_y),
         )
+        pixmap = clean.copy(device_rect)
         self._output_path.parent.mkdir(parents=True, exist_ok=True)
         saved = not pixmap.isNull() and pixmap.save(str(self._output_path), "PNG")
         self.close()

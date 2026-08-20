@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import argparse
+import contextlib
 import json
 import os
+import re
 import sys
+import tempfile
 import time
 import traceback
 from pathlib import Path
@@ -13,88 +17,176 @@ def emit(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, ensure_ascii=False), flush=True)
 
 
-def _formula_content_bbox(image: Any) -> tuple[int, int, int, int] | None:
-    """Estimate formula bounds while ignoring a decorative border touching the image edge."""
-    from collections import Counter
+def _model_dir() -> Path:
+    """Locate the bundled UniMERNet weights directory.
 
-    import cv2
+    Resolution order: explicit env override, then a package-local ``models``
+    directory (used by the packaged build), so the frozen app finds its
+    bundled weights without any environment configuration.
+    """
+    override = os.environ.get("PIX2TEX_UNIMERNET_MODEL_DIR")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent / "models" / "unimernet_tiny"
+
+
+def _write_worker_config(model_dir: Path) -> Path:
+    """Write a resolved UniMERNet config to a temp file and return its path.
+
+    UniMERNet's ``Config`` only loads from a yaml path, so the model directory
+    is baked into a small config written next to the OS temp dir at startup.
+    """
+    weights = next(model_dir.glob("*.pth"), None)
+    if weights is None:
+        raise FileNotFoundError(f"no .pth weights found in {model_dir}")
+    md = model_dir.as_posix()
+    text = f"""model:
+  arch: unimernet
+  model_type: unimernet
+  model_config:
+    model_name: {md}
+    max_seq_len: 1536
+  load_pretrained: True
+  pretrained: '{weights.as_posix()}'
+  tokenizer_config:
+    path: {md}
+datasets:
+  formula_rec_eval:
+    vis_processor:
+      eval:
+        name: "formula_image_eval"
+        image_size:
+          - 192
+          - 672
+run:
+  runner: runner_iter
+  task: unimernet_train
+  batch_size_train: 64
+  batch_size_eval: 64
+  num_workers: 1
+  iters_per_inner_epoch: 2000
+  max_iters: 60000
+  seed: 42
+  output_dir: "../output/demo"
+  evaluate: True
+  test_splits: [ "eval" ]
+  device: "cpu"
+  world_size: 1
+  dist_url: "env://"
+  distributed: False
+  distributed_type: ddp
+  generate_cfg:
+    temperature: 0.0
+"""
+    config_path = Path(tempfile.gettempdir()) / "pix2tex_unimernet_worker.yaml"
+    config_path.write_text(text, encoding="utf-8")
+    return config_path
+
+
+def _background_is_dark(image: Any) -> bool:
+    """Estimate whether the image is light-on-dark and should be inverted.
+
+    Formula models are trained on white-background black-text images, so a
+    dark-background capture is out of distribution. A formula (sparse ink on a
+    large background) is dominated by its background, so a low mean luminance
+    means the background is dark. Mean luminance is used rather than a border
+    ring because a stray light frame around the edge would defeat border
+    sampling.
+    """
     import numpy as np
-    from PIL import Image
 
-    rgb_image = image.convert("RGB")
-    sample_width = min(128, rgb_image.width)
-    sample_height = min(128, rgb_image.height)
-    sample = rgb_image.resize((sample_width, sample_height), Image.Resampling.NEAREST)
-    background = Counter(sample.getdata()).most_common(1)[0][0]
-    pixels = np.asarray(rgb_image, dtype=np.int16)
-    background_pixel = np.asarray(background, dtype=np.int16)
-    difference = np.max(np.abs(pixels - background_pixel), axis=2)
-    mask = (difference >= 24).astype(np.uint8)
-    count, _labels, stats, _centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
-    boxes: list[tuple[int, int, int, int]] = []
-    image_area = rgb_image.width * rgb_image.height
-    for index in range(1, count):
-        x, y, width, height, area = (int(value) for value in stats[index])
-        if area < max(2, int(image_area * 0.00001)):
-            continue
-        touches_edge = x == 0 or y == 0 or x + width == rgb_image.width or y + height == rgb_image.height
-        spans_frame = width >= rgb_image.width * 0.9 or height >= rgb_image.height * 0.9
-        if touches_edge and spans_frame:
-            continue
-        boxes.append((x, y, x + width, y + height))
-    if not boxes:
-        return None
-    return (
-        min(box[0] for box in boxes),
-        min(box[1] for box in boxes),
-        max(box[2] for box in boxes),
-        max(box[3] for box in boxes),
+    grayscale = np.asarray(image.convert("L"))
+    if grayscale.size == 0:
+        return False
+    return float(grayscale.mean()) < 128.0
+
+
+def _crop_to_content(image: Any) -> Any:
+    """Crop a white-background image to its dark content plus a small margin.
+
+    Handwriting drawn on a large canvas (or a screenshot with wide margins)
+    otherwise shrinks to a few pixels once the model resizes the whole frame.
+    Expects a white background (call after any inversion).
+    """
+    import numpy as np
+
+    grayscale = np.asarray(image.convert("L"))
+    if grayscale.size == 0:
+        return image
+    mask = grayscale < 250
+    if not mask.any():
+        return image
+    rows = np.where(mask.any(axis=1))[0]
+    cols = np.where(mask.any(axis=0))[0]
+    top, bottom = int(rows[0]), int(rows[-1])
+    left, right = int(cols[0]), int(cols[-1])
+    height, width = grayscale.shape
+    span = max(right - left, bottom - top)
+    margin = max(8, int(span * 0.06))
+    box = (
+        max(0, left - margin),
+        max(0, top - margin),
+        min(width, right + margin + 1),
+        min(height, bottom + margin + 1),
     )
+    if box == (0, 0, width, height):
+        return image
+    return image.crop(box)
 
 
-def prepare_image(image: Any, *, enabled: bool) -> Any:
-    """Crop whitespace around small formula content, then apply the existing enhancement."""
-    from PIL import Image, ImageEnhance
+def prepare_for_model(image: Any) -> Any:
+    """Return an RGB image with a white background, inverting dark captures and
+    cropping away surrounding whitespace so the formula fills the frame."""
+    from PIL import ImageOps
 
-    prepared = image.convert("RGB")
-    if not enabled:
-        return prepared
-    bbox = _formula_content_bbox(prepared)
-    if bbox:
-        left, top, right, bottom = bbox
-        content_width = right - left
-        content_height = bottom - top
-        margin = max(8, round(min(content_width, content_height) * 0.4))
-        expanded = (
-            max(0, left - margin),
-            max(0, top - margin),
-            min(prepared.width, right + margin),
-            min(prepared.height, bottom + margin),
-        )
-        if expanded != (0, 0, prepared.width, prepared.height):
-            prepared = prepared.crop(expanded)
-    width, height = prepared.size
-    if width < 100 or height < 100:
-        scale = max(100 / max(width, 1), 100 / max(height, 1))
-        prepared = prepared.resize(
-            (int(width * scale), int(height * scale)),
-            Image.Resampling.LANCZOS,
-        )
-        prepared = ImageEnhance.Contrast(prepared).enhance(1.5)
-        prepared = ImageEnhance.Sharpness(prepared).enhance(1.5)
-    return prepared
+    rgb = image.convert("RGB")
+    if _background_is_dark(rgb):
+        rgb = ImageOps.invert(rgb)
+    return _crop_to_content(rgb)
+
+
+def normalize_prediction(prediction: str) -> str:
+    """Trim UniMERNet output and drop layout-only artifacts.
+
+    Handwriting places integral/sum limits stacked above and below the operator,
+    so the model emits ``\\limits`` and renders the result spread out. Dropping
+    ``\\limits``/``\\nolimits`` restores conventional sub/superscript placement
+    without changing the mathematical meaning. Inter-token spaces are otherwise
+    kept because they terminate LaTeX command names (e.g. ``\\displaystyle x``).
+    """
+    text = prediction.strip()
+    text = re.sub(r"\\(?:no)?limits\b", "", text)
+    text = re.sub(r"[ \t]{2,}", " ", text).strip()
+    return text
 
 
 def main() -> int:
     os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
     started = time.perf_counter()
     try:
+        import torch
         from PIL import Image
-        import pix2tex.cli as cli
-        from pix2tex.cli import LatexOCR
 
-        cli.clipboard.copy = lambda _value: None
-        model = LatexOCR()
+        from unimernet.common.config import Config
+        import unimernet.tasks as tasks
+        from unimernet.processors import load_processor
+
+        # UniMERNet's model classes print construction banners to stdout, which
+        # is the JSONL protocol channel. Redirect stdout to stderr during load
+        # so those lines never corrupt the result stream.
+        with contextlib.redirect_stdout(sys.stderr):
+            torch.set_grad_enabled(False)
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+            config_path = _write_worker_config(_model_dir())
+            cfg = Config(argparse.Namespace(cfg_path=str(config_path), options=None))
+            task = tasks.setup_task(cfg)
+            model = task.build_model(cfg).to(device)
+            model.eval()
+            vis_processor = load_processor(
+                "formula_image_eval",
+                cfg.config.datasets.formula_rec_eval.vis_processor.eval,
+            )
     except Exception as exc:  # pragma: no cover - exercised by process smoke tests
         emit({"type": "error", "message": f"模型加载失败：{exc}"})
         traceback.print_exc(file=sys.stderr)
@@ -113,14 +205,10 @@ def main() -> int:
 
             image_path = Path(str(command.get("path", "")))
             infer_started = time.perf_counter()
-            with Image.open(image_path) as image:
-                image = prepare_image(
-                    image,
-                    enabled=bool(command.get("small_image_enhancement", True)),
-                )
-                model.args.temperature = max(float(command.get("temperature", 0.3)), 1e-8)
-                prediction = model(image)
-            prediction = prediction.replace("<", r"\lt ").replace(">", r"\gt ")
+            with Image.open(image_path) as image, contextlib.redirect_stdout(sys.stderr):
+                pixel_values = vis_processor(prepare_for_model(image)).unsqueeze(0).to(device)
+                output = model.generate({"image": pixel_values})
+            prediction = normalize_prediction(output["pred_str"][0])
             emit(
                 {
                     "type": "result",

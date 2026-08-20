@@ -148,8 +148,6 @@ def evaluate_manifest(
                         "type": "predict",
                         "id": request_id,
                         "path": str(case.image),
-                        "temperature": 0.3,
-                        "small_image_enhancement": True,
                     },
                     ensure_ascii=False,
                 )
