@@ -52,11 +52,24 @@ def _formula_content_bbox(image: Any) -> tuple[int, int, int, int] | None:
     )
 
 
+def _background_is_dark(image: Any) -> bool:
+    """Dark-background captures are out of distribution for the model; a low mean
+    luminance means light-on-dark, so the image should be inverted first."""
+    import numpy as np
+
+    grayscale = np.asarray(image.convert("L"))
+    if grayscale.size == 0:
+        return False
+    return float(grayscale.mean()) < 128.0
+
+
 def prepare_image(image: Any, *, enabled: bool) -> Any:
-    """Crop whitespace around small formula content, then apply the existing enhancement."""
-    from PIL import Image, ImageEnhance
+    """Invert dark-background captures, then crop/enhance small formula content."""
+    from PIL import Image, ImageEnhance, ImageOps
 
     prepared = image.convert("RGB")
+    if _background_is_dark(prepared):
+        prepared = ImageOps.invert(prepared)
     if not enabled:
         return prepared
     bbox = _formula_content_bbox(prepared)

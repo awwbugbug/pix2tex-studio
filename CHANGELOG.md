@@ -2,6 +2,17 @@
 
 All notable changes to Pix2Tex Studio are recorded here.
 
+## [1.0.0rc2] - 2026-08-20
+
+### Fixed
+
+- Region capture no longer bakes the selection overlay's white border into the
+  saved image. The screen is now grabbed cleanly before the overlay is shown and
+  the selection is cropped from it, which fixed dark-background formulas being
+  misrecognized because of the stray frame.
+- The OCR worker now auto-inverts dark-background (light-on-dark) captures before
+  recognition, so black-background formulas are read reliably.
+
 ## [1.0.0rc1] - 2026-08-11
 
 ### Release freeze

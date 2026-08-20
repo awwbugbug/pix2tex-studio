@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pix2tex-studio"
-version = "1.0.0rc1"
+version = "1.0.0rc2"
 description = "A local-first Windows desktop shell for pix2tex."
 requires-python = ">=3.10,<3.11"
 license = "MIT"
