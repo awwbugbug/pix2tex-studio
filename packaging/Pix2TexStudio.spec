@@ -52,15 +52,24 @@ weight_datas = [
     if item.is_file()
 ]
 
+# The GUI process converts recognized LaTeX to SymPy (sympy + lark backend).
+# The GUI never imports torch, so PyInstaller does not discover sympy through
+# torch's lazy import — force it in, along with its .lark grammar data files.
 main_datas = [
     (str(source_root / "pix2tex_app" / "ui"), "pix2tex_app/ui"),
+    *collect_data_files("sympy"),
+    *collect_data_files("lark"),
 ]
 worker_datas = [
     *unimernet_datas,
     *weight_datas,
     *metadata_datas,
 ]
-main_hiddenimports = []
+main_hiddenimports = [
+    "sympy",
+    "lark",
+    *collect_submodules("sympy.parsing"),
+]
 worker_hiddenimports = [
     "antlr4",
     "transformers",
