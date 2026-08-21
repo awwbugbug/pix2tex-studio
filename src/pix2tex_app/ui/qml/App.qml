@@ -754,6 +754,7 @@ ApplicationWindow {
                                             Text { text: "输出格式"; color: Theme.inkMuted; font.family: Theme.uiFont; font.pixelSize: 9 }
                                             Item { Layout.fillWidth: true }
                                             FormatButton { text: "Raw"; selected: appController.formatMode === "raw"; onClicked: { appController.setFormatMode("raw"); window.editorIndex = 1 } }
+                                            FormatButton { text: "Word"; selected: appController.formatMode === "word"; onClicked: { appController.setFormatMode("word"); window.editorIndex = 1 } }
                                             FormatButton { text: "LaTeX-$"; selected: appController.formatMode === "latex-inline"; onClicked: { appController.setFormatMode("latex-inline"); window.editorIndex = 1 } }
                                             FormatButton { text: "LaTeX-$$"; selected: appController.formatMode === "latex-display"; onClicked: { appController.setFormatMode("latex-display"); window.editorIndex = 1 } }
                                             FormatButton { text: "SymPy"; selected: appController.formatMode === "sympy"; onClicked: { appController.setFormatMode("sympy"); window.editorIndex = 1 } }

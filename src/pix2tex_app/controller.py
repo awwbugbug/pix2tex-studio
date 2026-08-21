@@ -42,6 +42,32 @@ def _worker_process_command(
     return program, ["-u", str(worker_path)]
 
 
+def _clean_latex(latex: str) -> str:
+    """Return compact, delimiter-free LaTeX for Word's equation input.
+
+    UniMERNet wraps plain formulas in a single-row ``array`` and separates every
+    token with a space, which Word's LaTeX equation input cannot parse (and which
+    also trips the SymPy parser). This unwraps that array, drops layout-only
+    commands, and removes token spaces — keeping only the space that terminates a
+    command name before a letter, so ``\\sin x`` does not collapse into
+    ``\\sinx``.
+    """
+    text = latex.strip()
+    match = re.match(
+        r"^\\begin\{array\}\s*\{[^{}]*\}\s*\{(.*)\}\s*\\end\{array\}$",
+        text,
+        re.DOTALL,
+    )
+    if match and r"\\" not in match.group(1):
+        text = match.group(1).strip()
+    text = re.sub(r"\\displaystyle\b", "", text)
+    text = re.sub(r"\\(?:no)?limits\b", "", text)
+    text = re.sub(r"(\\[a-zA-Z]+) +(?=[A-Za-z])", "\\1\x00", text)
+    text = text.replace(" ", "")
+    text = text.replace("\x00", " ")
+    return text.strip()
+
+
 class HistoryModel(QAbstractListModel):
     FormulaRole = Qt.ItemDataRole.UserRole + 1
     ImageRole = FormulaRole + 1
@@ -177,7 +203,7 @@ class AppController(QObject):
     globalHotkeyStatusChanged = Signal()
     historyLimitChanged = Signal()
 
-    _VALID_FORMATS = {"raw", "latex-inline", "latex-display", "sympy"}
+    _VALID_FORMATS = {"raw", "word", "latex-inline", "latex-display", "sympy"}
     _VALID_THEMES = {"system", "light", "dark"}
     _VALID_GLOBAL_HOTKEYS = {"Ctrl+Shift+A", "Alt+S", "Ctrl+A"}
     _VALID_HISTORY_LIMITS = {50, 100, 200}
@@ -383,18 +409,21 @@ class AppController(QObject):
             formatted = ""
         elif self._format_mode == "raw":
             formatted = raw
+        elif self._format_mode == "word":
+            formatted = _clean_latex(raw)
         elif self._format_mode == "latex-inline":
             formatted = f"${raw}$"
         elif self._format_mode == "latex-display":
             formatted = f"$${raw}$$"
         else:
+            cleaned = _clean_latex(raw)
             try:
                 from sympy.parsing.latex import parse_latex
 
-                normalized = re.sub(r"operatorname\*{(\w+)}", r"\1", raw)
+                normalized = re.sub(r"operatorname\*{(\w+)}", r"\1", cleaned)
                 formatted = str(parse_latex(normalized, backend="lark"))
             except Exception:
-                formatted = raw
+                formatted = cleaned
                 error = "SymPy 解析失败"
 
         if self._formatted_latex != formatted:

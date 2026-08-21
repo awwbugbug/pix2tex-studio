@@ -31,7 +31,7 @@ Function un.onInit
 FunctionEnd
 
 !define APP_NAME "Pix2Tex Studio"
-!define APP_VERSION "2.0.0-rc1"
+!define APP_VERSION "2.0.0-rc2"
 !define APP_PUBLISHER "Reasonix"
 !define APP_EXE "Pix2TexStudio.exe"
 !define APP_REG_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Pix2TexStudio"

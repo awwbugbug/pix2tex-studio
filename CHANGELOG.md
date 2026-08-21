@@ -2,6 +2,21 @@
 
 All notable changes to Pix2Tex Studio are recorded here.
 
+## [2.0.0rc2] - 2026-08-21
+
+### Added
+
+- "Word" output mode (next to Raw): emits compact, delimiter-free LaTeX for
+  Microsoft Word's equation input — unwraps UniMERNet's single-row `array`,
+  drops layout-only commands, and collapses token spaces while keeping the space
+  that ends a command name before a letter (so `\sin x` stays `\sin x`).
+
+### Fixed
+
+- SymPy output now handles the model's `array`-wrapped predictions: the raw
+  LaTeX is cleaned before it reaches the SymPy parser, so real formulas convert
+  instead of failing.
+
 ## [Unreleased] - 2.0.0-dev
 
 ### Changed
