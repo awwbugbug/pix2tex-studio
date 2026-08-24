@@ -97,26 +97,22 @@ def _clean_latex(latex: str) -> str:
 def _word_latex(latex: str) -> str:
     """Constrain the output toward Microsoft Word's supported LaTeX subset.
 
-    Beyond the shared cleanup this canonicalizes the render-relevant, string-safe
-    rules: scalable ``|``/``\\|`` delimiters to ``\\lvert``/``\\lVert``, ``\\prime``
-    to ``'``, and always-redundant double braces. Deeper canonicalization
-    (removing single argument-position braces, differential spacing) needs a real
-    LaTeX AST and is intentionally left out — it would risk corrupting valid
-    formulas and does not affect whether Word renders.
+    Beyond the shared cleanup this applies the render-relevant, string-safe rules:
+    Unicode folding (in ``_clean_latex``), ``\\prime`` to ``'``, the ``\\lvert``
+    family folded to the plain ``|``/``\\|`` bars that Word actually renders
+    (Word leaves ``\\lvert``/``\\rvert`` as literal text), and always-redundant
+    double braces. Deeper canonicalization (differential spacing, removing single
+    argument-position braces, OMML) needs a real LaTeX AST and is left out.
     """
     text = _clean_latex(latex)
-    text = text.replace("\\left\\|", "\\left\\lVert").replace("\\right\\|", "\\right\\rVert")
-    text = text.replace("\\left|", "\\left\\lvert").replace("\\right|", "\\right\\rvert")
     text = re.sub(r"\^\{(?:\\prime)+\}", lambda m: "'" * m.group(0).count("prime"), text)
     text = text.replace("\\prime", "'")
+    text = re.sub(r"\\lVert|\\rVert", r"\\|", text)  # scalable norm -> \|
+    text = re.sub(r"\\lvert|\\rvert", "|", text)      # scalable abs -> |
     previous = None
     while previous != text:  # collapse nested {{...}} that fills its parent exactly
         previous = text
         text = re.sub(r"\{\{([^{}]*)\}\}", r"{\1}", text)
-    # The delimiter macros just inserted are letters, so they can run into a
-    # following letter (\right\rvertdudv). Restore that one boundary precisely —
-    # matching only these fixed names so command names are never split.
-    text = re.sub(r"(\\(?:lvert|rvert|lVert|rVert))(?=[A-Za-z])", r"\1 ", text)
     return text.strip()
 
 

@@ -211,15 +211,17 @@ class WordNormalizerTests(unittest.TestCase):
     def test_prime_becomes_apostrophe(self) -> None:
         self.assertEqual(_word_latex(r"x^{\prime\prime}+y^{\prime}"), "x''+y'")
 
-    def test_scalable_bars_become_canonical_delimiters(self) -> None:
+    def test_word_supported_bars_are_left_alone(self) -> None:
+        # | and \| render in Word, so the model's own delimiters are untouched.
         self.assertEqual(
             _word_latex(r"\left\|v\right\|+\left|x\right|"),
-            r"\left\lVert v\right\rVert+\left\lvert x\right\rvert",
+            r"\left\|v\right\|+\left|x\right|",
         )
 
-    def test_delimiter_does_not_run_into_a_following_letter(self) -> None:
-        # \right|dudv must not become \right\rvertdudv (one bogus command).
-        self.assertEqual(_word_latex(r"\left|x\right|dx"), r"\left\lvert x\right\rvert dx")
+    def test_lvert_family_folds_to_plain_bars(self) -> None:
+        # Word leaves \lvert/\rvert as literal text, so fold them to | and \|.
+        self.assertEqual(_word_latex(r"\left\lvert x\right\rvert"), r"\left| x\right|")
+        self.assertEqual(_word_latex(r"\left\lVert v\right\rVert"), r"\left\| v\right\|")
 
     def test_keeps_argument_braces(self) -> None:
         self.assertEqual(_word_latex(r"x^{a+b}+\frac{a+b}{c}"), r"x^{a+b}+\frac{a+b}{c}")
