@@ -2,6 +2,19 @@
 
 All notable changes to Pix2Tex Studio are recorded here.
 
+## [2.0.0rc3] - 2026-08-24
+
+### Changed
+
+- The Word output mode now constrains the LaTeX toward Microsoft Word's
+  supported subset (which Word converts to OMML), so more formulas render on
+  stricter/older Word versions. It folds OCR Unicode contamination to ASCII
+  (curly quotes/prime → `'`, Unicode minus/dashes → `-`, full-width brackets →
+  ASCII, stripped NBSP/zero-width), normalizes `\prime` → `'` and scalable
+  `|`/`\|` → `\lvert`/`\lVert`, and removes always-redundant `{{...}}` — without
+  breaking command/letter boundaries. The Unicode folding also feeds SymPy.
+- 2.0.0rc2 remains published as the lighter-constraint build for newer Word.
+
 ## [2.0.0rc2] - 2026-08-21
 
 ### Added

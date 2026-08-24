@@ -7,7 +7,7 @@ if (-not $RuntimeRoot) {
 }
 
 $portableRoot = Join-Path $projectRoot 'dist\Pix2TexStudio'
-$installer = Join-Path $projectRoot 'installer\output\Pix2TexStudio-2.0.0-rc2-Setup.exe'
+$installer = Join-Path $projectRoot 'installer\output\Pix2TexStudio-2.0.0-rc3-Setup.exe'
 $python = Join-Path $RuntimeRoot 'unimernet_build_env\python.exe'
 $evidenceRoot = Join-Path $projectRoot 'release-evidence'
 
@@ -34,7 +34,7 @@ $installerSha256 = (Get-FileHash -LiteralPath $installerItem.FullName -Algorithm
 
 $manifest = [ordered]@{
     generated_at = (Get-Date).ToString('o')
-    version = '2.0.0rc2'
+    version = '2.0.0rc3'
     release_status = 'local-candidate-awaiting-final-acceptance'
     platform = [System.Environment]::OSVersion.VersionString
     git_commit = $gitCommit
