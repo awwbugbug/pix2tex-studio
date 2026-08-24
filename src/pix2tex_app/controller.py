@@ -94,25 +94,119 @@ def _clean_latex(latex: str) -> str:
     return text.strip()
 
 
+def _is_single_atom(content: str) -> bool:
+    """True if ``content`` is one atom — a command with its ``{}``/``[]`` args, a
+    single ``{...}`` group, or a single character — so wrapping braces around it
+    are pure grouping rather than a meaningful multi-token group."""
+    if not content:
+        return False
+    if len(content) == 1:
+        return True
+    if content[0] == "\\":
+        match = re.match(r"\\[a-zA-Z]+", content)
+        if not match:
+            return False
+        k = match.end()
+        while k < len(content) and content[k] in "{[":
+            depth = 0
+            while k < len(content):
+                if content[k] in "{[":
+                    depth += 1
+                elif content[k] in "}]":
+                    depth -= 1
+                    if depth == 0:
+                        k += 1
+                        break
+                k += 1
+            else:
+                return False
+        return k == len(content)
+    if content[0] == "{":
+        depth = 0
+        for k, ch in enumerate(content):
+            depth += (ch == "{") - (ch == "}")
+            if depth == 0:
+                return k == len(content) - 1
+    return False
+
+
+def _strip_redundant_groups(text: str) -> str:
+    """Drop a ``{...}`` that only groups a single atom in a non-argument position.
+
+    Braces that are actually arguments are always kept: those after ``^``/``_``,
+    after a command name (a preceding letter), or a fraction's second slot (a
+    preceding ``}``). Word rejects e.g. ``\\left|{\\frac{...}}\\right|`` because of
+    the stray group, so removing it is what lets such formulas render.
+    """
+    out: list[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        if text[i] == "{":
+            depth, j = 1, i + 1
+            while j < n and depth:
+                depth += (text[j] == "{") - (text[j] == "}")
+                j += 1
+            inner = _strip_redundant_groups(text[i + 1 : j - 1])
+            prev = out[-1][-1] if out and out[-1] else ""
+            argument_position = prev in ("^", "_", "}") or prev.isalpha()
+            if not argument_position and _is_single_atom(inner):
+                out.append(inner)
+            else:
+                out.append("{" + inner + "}")
+            i = j
+        else:
+            out.append(text[i])
+            i += 1
+    return "".join(out)
+
+
+def _strip_bold_font_commands(text: str) -> str:
+    """Unwrap bold math-font commands (``\\mathbf{x}`` -> ``x``).
+
+    Older Word cannot render a bold font run and the ``\\Vert`` norm delimiter in
+    the same expression (the combination corrupts to garbage), so for the Word
+    subset bold is dropped and the correct double bar is kept. A space is inserted
+    when the command was glued to a preceding command name so the boundary stays
+    intact (``\\Vert\\mathbf{x}`` -> ``\\Vert x``, not ``\\Vertx``).
+    """
+    pattern = re.compile(r"\\(?:mathbf|boldsymbol|bm|pmb)\s*\{")
+    while True:
+        m = pattern.search(text)
+        if not m:
+            break
+        start, brace = m.start(), m.end() - 1
+        depth, j = 1, brace + 1
+        while j < len(text) and depth:
+            depth += (text[j] == "{") - (text[j] == "}")
+            j += 1
+        if depth:  # unbalanced: leave the rest untouched
+            break
+        inner = text[brace + 1 : j - 1]
+        prefix = text[:start]
+        sep = " " if prefix[-1:].isalpha() else ""
+        text = prefix + sep + inner + text[j:]
+    return text
+
+
 def _word_latex(latex: str) -> str:
     """Constrain the output toward Microsoft Word's supported LaTeX subset.
 
     Beyond the shared cleanup this applies the render-relevant, string-safe rules:
-    Unicode folding (in ``_clean_latex``), ``\\prime`` to ``'``, the ``\\lvert``
-    family folded to the plain ``|``/``\\|`` bars that Word actually renders
-    (Word leaves ``\\lvert``/``\\rvert`` as literal text), and always-redundant
-    double braces. Deeper canonicalization (differential spacing, removing single
-    argument-position braces, OMML) needs a real LaTeX AST and is left out.
+    Unicode folding (in ``_clean_latex``), ``\\prime`` to ``'``, every double-bar
+    form folded to the named ``\\Vert`` (Word renders ``\\Vert`` but not the ``\\|``
+    shorthand) and the ``\\lvert`` family folded to the plain ``|`` (Word leaves
+    ``\\lvert``/``\\rvert`` as literal text), bold font commands dropped (Word
+    cannot render bold together with ``\\Vert``), and removal of redundant grouping
+    braces (Word rejects a stray group inside ``\\left|...\\right|``).
     """
     text = _clean_latex(latex)
     text = re.sub(r"\^\{(?:\\prime)+\}", lambda m: "'" * m.group(0).count("prime"), text)
     text = text.replace("\\prime", "'")
-    text = re.sub(r"\\lVert|\\rVert", r"\\|", text)  # scalable norm -> \|
-    text = re.sub(r"\\lvert|\\rvert", "|", text)      # scalable abs -> |
-    previous = None
-    while previous != text:  # collapse nested {{...}} that fills its parent exactly
-        previous = text
-        text = re.sub(r"\{\{([^{}]*)\}\}", r"{\1}", text)
+    text = re.sub(r"\\lVert|\\rVert|\\\|", r"\\Vert", text)
+    text = re.sub(r"\\lvert|\\rvert", "|", text)
+    text = _strip_bold_font_commands(text)
+    text = re.sub(r"\\Vert(?=[A-Za-z])", r"\\Vert ", text)  # keep the command boundary
+    text = _strip_redundant_groups(text)
     return text.strip()
 
 

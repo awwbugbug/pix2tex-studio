@@ -211,23 +211,40 @@ class WordNormalizerTests(unittest.TestCase):
     def test_prime_becomes_apostrophe(self) -> None:
         self.assertEqual(_word_latex(r"x^{\prime\prime}+y^{\prime}"), "x''+y'")
 
-    def test_word_supported_bars_are_left_alone(self) -> None:
-        # | and \| render in Word, so the model's own delimiters are untouched.
+    def test_single_bar_is_kept_double_bar_becomes_Vert(self) -> None:
+        # Word renders | (abs) and the named \Vert (norm), but not the \| shorthand.
         self.assertEqual(
             _word_latex(r"\left\|v\right\|+\left|x\right|"),
-            r"\left\|v\right\|+\left|x\right|",
+            r"\left\Vert v\right\Vert+\left|x\right|",
         )
+        self.assertEqual(_word_latex(r"\|x-y\|"), r"\Vert x-y\Vert")
 
-    def test_lvert_family_folds_to_plain_bars(self) -> None:
-        # Word leaves \lvert/\rvert as literal text, so fold them to | and \|.
+    def test_lvert_family_folds_to_word_forms(self) -> None:
+        # Word leaves \lvert/\rvert as literal text, so fold to | (abs) and \Vert (norm).
         self.assertEqual(_word_latex(r"\left\lvert x\right\rvert"), r"\left| x\right|")
-        self.assertEqual(_word_latex(r"\left\lVert v\right\rVert"), r"\left\| v\right\|")
+        self.assertEqual(_word_latex(r"\left\lVert v\right\rVert"), r"\left\Vert v\right\Vert")
+
+    def test_bold_font_commands_are_stripped(self) -> None:
+        # Old Word can't render \mathbf together with \Vert, so bold is dropped
+        # while the correct double bar is kept, with the command boundary intact.
+        self.assertEqual(_word_latex(r"\|\mathbf{x}-\mathbf{y}\|"), r"\Vert x-y\Vert")
+        self.assertEqual(_word_latex(r"|\mathbf{x}|"), r"|x|")
+        self.assertEqual(_word_latex(r"\boldsymbol{v}+\mathbf{A}b"), r"v+Ab")
 
     def test_keeps_argument_braces(self) -> None:
         self.assertEqual(_word_latex(r"x^{a+b}+\frac{a+b}{c}"), r"x^{a+b}+\frac{a+b}{c}")
 
     def test_unicode_is_normalized_in_word_output(self) -> None:
         self.assertEqual(_word_latex("f（x）−y"), "f(x)-y")
+
+    def test_removes_redundant_group_but_keeps_argument_braces(self) -> None:
+        # The stray {} around \frac inside \left|...\right| breaks Word; drop it.
+        self.assertEqual(
+            _word_latex(r"\left|{\frac{\partial x}{\partial y}}\right|"),
+            r"\left|\frac{\partial x}{\partial y}\right|",
+        )
+        # But a fraction's own argument braces must survive.
+        self.assertEqual(_word_latex(r"\frac{a}{b}+x^{n}"), r"\frac{a}{b}+x^{n}")
 
 
 if __name__ == "__main__":
