@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import sys
+import unicodedata
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -42,17 +43,42 @@ def _worker_process_command(
     return program, ["-u", str(worker_path)]
 
 
-def _clean_latex(latex: str) -> str:
-    """Return compact, delimiter-free LaTeX for Word's equation input.
+_FULLWIDTH_TO_ASCII = {
+    "（": "(", "）": ")", "［": "[", "］": "]", "｛": "{", "｝": "}",
+    "，": ",", "．": ".", "／": "/", "＝": "=", "＋": "+", "－": "-",
+}
 
-    UniMERNet wraps plain formulas in a single-row ``array`` and separates every
-    token with a space, which Word's LaTeX equation input cannot parse (and which
-    also trips the SymPy parser). This unwraps that array, drops layout-only
-    commands, and removes token spaces — keeping only the space that terminates a
-    command name before a letter, so ``\\sin x`` does not collapse into
-    ``\\sinx``.
+
+def _normalize_unicode(text: str) -> str:
+    """Fold OCR Unicode contamination back to the ASCII LaTeX expects.
+
+    Word rejects a command that carries a curly quote, a Unicode minus, a
+    full-width bracket, or an invisible space, so these must be normalized before
+    the string is treated as LaTeX (rules 22-24 of the Word compatibility spec).
     """
-    text = latex.strip()
+    text = unicodedata.normalize("NFC", text)
+    text = re.sub(r"[\u200b-\u200f\u202a-\u202e\u2060\ufeff]", "", text)  # zero-width / bidi
+    text = re.sub(r"[\u00a0\u2007\u2009\u202f\u2002-\u2006]", " ", text)  # unicode spaces
+    for src, dst in (
+        ("\u2018", "'"), ("\u2019", "'"), ("\u2032", "'"),  # ‘ ’ ′ -> '
+        ("\u201c", '"'), ("\u201d", '"'),                    # “ ” -> "
+        ("\u2212", "-"), ("\u2013", "-"), ("\u2014", "-"),   # − – — -> -
+    ):
+        text = text.replace(src, dst)
+    for src, dst in _FULLWIDTH_TO_ASCII.items():
+        text = text.replace(src, dst)
+    return text
+
+
+def _clean_latex(latex: str) -> str:
+    """Return compact, delimiter-free LaTeX (shared by Word and SymPy).
+
+    Normalizes Unicode, unwraps UniMERNet's single-row ``array``, drops
+    layout-only commands, and removes token spaces — keeping only the space that
+    terminates a command name before a letter, so ``\\sin x`` does not collapse
+    into ``\\sinx``.
+    """
+    text = _normalize_unicode(latex).strip()
     match = re.match(
         r"^\\begin\{array\}\s*\{[^{}]*\}\s*\{(.*)\}\s*\\end\{array\}$",
         text,
@@ -65,6 +91,32 @@ def _clean_latex(latex: str) -> str:
     text = re.sub(r"(\\[a-zA-Z]+) +(?=[A-Za-z])", "\\1\x00", text)
     text = text.replace(" ", "")
     text = text.replace("\x00", " ")
+    return text.strip()
+
+
+def _word_latex(latex: str) -> str:
+    """Constrain the output toward Microsoft Word's supported LaTeX subset.
+
+    Beyond the shared cleanup this canonicalizes the render-relevant, string-safe
+    rules: scalable ``|``/``\\|`` delimiters to ``\\lvert``/``\\lVert``, ``\\prime``
+    to ``'``, and always-redundant double braces. Deeper canonicalization
+    (removing single argument-position braces, differential spacing) needs a real
+    LaTeX AST and is intentionally left out — it would risk corrupting valid
+    formulas and does not affect whether Word renders.
+    """
+    text = _clean_latex(latex)
+    text = text.replace("\\left\\|", "\\left\\lVert").replace("\\right\\|", "\\right\\rVert")
+    text = text.replace("\\left|", "\\left\\lvert").replace("\\right|", "\\right\\rvert")
+    text = re.sub(r"\^\{(?:\\prime)+\}", lambda m: "'" * m.group(0).count("prime"), text)
+    text = text.replace("\\prime", "'")
+    previous = None
+    while previous != text:  # collapse nested {{...}} that fills its parent exactly
+        previous = text
+        text = re.sub(r"\{\{([^{}]*)\}\}", r"{\1}", text)
+    # The delimiter macros just inserted are letters, so they can run into a
+    # following letter (\right\rvertdudv). Restore that one boundary precisely —
+    # matching only these fixed names so command names are never split.
+    text = re.sub(r"(\\(?:lvert|rvert|lVert|rVert))(?=[A-Za-z])", r"\1 ", text)
     return text.strip()
 
 
@@ -410,7 +462,7 @@ class AppController(QObject):
         elif self._format_mode == "raw":
             formatted = raw
         elif self._format_mode == "word":
-            formatted = _clean_latex(raw)
+            formatted = _word_latex(raw)
         elif self._format_mode == "latex-inline":
             formatted = f"${raw}$"
         elif self._format_mode == "latex-display":

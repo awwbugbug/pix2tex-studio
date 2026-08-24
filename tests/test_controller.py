@@ -7,7 +7,13 @@ from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication
 
-from pix2tex_app.controller import AppController, _clean_latex, _worker_process_command
+from pix2tex_app.controller import (
+    AppController,
+    _clean_latex,
+    _normalize_unicode,
+    _word_latex,
+    _worker_process_command,
+)
 
 
 class ControllerTests(unittest.TestCase):
@@ -191,6 +197,35 @@ class CleanLatexTests(unittest.TestCase):
     def test_multi_row_array_is_left_intact(self) -> None:
         matrix = r"\begin{array} { c c } { a } & { b } \\ { c } & { d } \end{array}"
         self.assertIn(r"\begin{array}", _clean_latex(matrix))
+
+
+class NormalizeUnicodeTests(unittest.TestCase):
+    def test_folds_ocr_contamination_to_ascii(self) -> None:
+        self.assertEqual(_normalize_unicode("a − b"), "a - b")            # minus
+        self.assertEqual(_normalize_unicode("x’"), "x'")                  # curly apostrophe
+        self.assertEqual(_normalize_unicode("f（x）"), "f(x)")        # full-width parens
+        self.assertEqual(_normalize_unicode("a +​b"), "a +b")       # nbsp + zero-width
+
+
+class WordNormalizerTests(unittest.TestCase):
+    def test_prime_becomes_apostrophe(self) -> None:
+        self.assertEqual(_word_latex(r"x^{\prime\prime}+y^{\prime}"), "x''+y'")
+
+    def test_scalable_bars_become_canonical_delimiters(self) -> None:
+        self.assertEqual(
+            _word_latex(r"\left\|v\right\|+\left|x\right|"),
+            r"\left\lVert v\right\rVert+\left\lvert x\right\rvert",
+        )
+
+    def test_delimiter_does_not_run_into_a_following_letter(self) -> None:
+        # \right|dudv must not become \right\rvertdudv (one bogus command).
+        self.assertEqual(_word_latex(r"\left|x\right|dx"), r"\left\lvert x\right\rvert dx")
+
+    def test_keeps_argument_braces(self) -> None:
+        self.assertEqual(_word_latex(r"x^{a+b}+\frac{a+b}{c}"), r"x^{a+b}+\frac{a+b}{c}")
+
+    def test_unicode_is_normalized_in_word_output(self) -> None:
+        self.assertEqual(_word_latex("f（x）−y"), "f(x)-y")
 
 
 if __name__ == "__main__":
