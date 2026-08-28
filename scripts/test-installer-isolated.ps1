@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 if (-not $Installer) {
-    $Installer = Join-Path $projectRoot 'installer\output\Pix2TexStudio-2.0.0-rc3-Setup.exe'
+    $Installer = Join-Path $projectRoot 'installer\output\Pix2TexStudio-2.0.0-Setup.exe'
 }
 $installerPath = (Resolve-Path -LiteralPath $Installer).Path
 $fixturePath = (Resolve-Path -LiteralPath $Fixture).Path
@@ -119,7 +119,7 @@ try {
         }
     }
     $version = (Get-Item -LiteralPath $mainExe).VersionInfo.ProductVersion
-    if ($version -ne '2.0.0-rc3') {
+    if ($version -ne '2.0.0') {
         throw "Installed executable has unexpected version: $version"
     }
     $installedResult = & (Join-Path $projectRoot 'scripts\test-installed-release.ps1') `
@@ -152,7 +152,7 @@ if ((Get-UserInstallState) -ne $beforeState) {
     inference_seconds = $installedResult.inference_seconds
     latex = $installedResult.latex
     worker_exit = $installedResult.worker_exit
-    installed_version = '2.0.0-rc3'
+    installed_version = '2.0.0'
     uninstall_exit = $uninstallExit
     shell_and_registry_unchanged = $true
     install_directory_removed = $true

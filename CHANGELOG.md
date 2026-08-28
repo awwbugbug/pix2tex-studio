@@ -2,6 +2,26 @@
 
 All notable changes to Pix2Tex Studio are recorded here.
 
+## [2.0.0] - 2026-08-28
+
+First formal 2.0 release: the old-Word-compatible, optimized build.
+
+### Changed
+
+- Finalized the Word output mode against the LaTeX subset older Microsoft Word
+  actually renders (empirically determined, since Word converts to OMML):
+  - Double-bar norms (`\|`, `\lVert`, `\rVert`) now emit the named `\Vert` — old
+    Word renders `\Vert` but treats the `\|` shorthand as a single bar. This
+    supersedes rc3's `\|` → `\lVert` mapping, which older Word rendered as text.
+  - Single-bar `\lvert`/`\rvert` fold to `|` (Word shows the named forms as text).
+  - Bold font commands (`\mathbf`/`\boldsymbol`) are dropped to plain letters,
+    because old Word cannot render a bold run together with `\Vert`; the double
+    bar is kept in preference to the (cosmetic) bold.
+  - Redundant grouping braces (e.g. a stray `{}` inside `\left|...\right|`) are
+    removed, which is what lets such fractions render — all without breaking a
+    command/letter boundary.
+- 2.0.0rc2 remains published as the lighter-constraint build for newer Word.
+
 ## [2.0.0rc3] - 2026-08-24
 
 ### Changed
