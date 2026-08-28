@@ -1,10 +1,14 @@
-# Local development runtime cloned from Conda. Never commit it.
-/runtime/pix2tex_env/
-/runtime/build_env/
-/runtime/build_tools/
+# Local development runtime cloned from Conda (multi-GB build envs, models,
+# toolchain). Never commit it.
+/runtime/
 
 # Local environment-clone and diagnostic logs.
 /.logs/
+*.log
+
+# Local scratch/reference notes kept out of the public repo.
+/better_model_recmd.md
+/word中渲染latex的要求.md
 
 # Local application state and build outputs.
 /.cache/
