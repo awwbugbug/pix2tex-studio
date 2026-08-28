@@ -10,13 +10,14 @@ First formal 2.0 release: the old-Word-compatible, optimized build.
 
 - Finalized the Word output mode against the LaTeX subset older Microsoft Word
   actually renders (empirically determined, since Word converts to OMML):
-  - Double-bar norms (`\|`, `\lVert`, `\rVert`) now emit the named `\Vert` — old
-    Word renders `\Vert` but treats the `\|` shorthand as a single bar. This
-    supersedes rc3's `\|` → `\lVert` mapping, which older Word rendered as text.
+  - Double-bar norms (`\|`, `\lVert`, `\rVert`) now emit the named `\Vert{}` with
+    a trailing empty group — old Word renders `\Vert` but treats the `\|`
+    shorthand as a single bar, and the `{}` is the boundary its LaTeX→OMML
+    converter needs to terminate the command, so an adjacent bold run (`\mathbf`)
+    and a following `^` superscript both render (`\Vert{}\mathbf{x}`,
+    `\Vert{}^2`). A space does not work as this boundary; `{}` does, so bold is
+    kept rather than dropped. This supersedes rc3's `\|` → `\lVert` mapping.
   - Single-bar `\lvert`/`\rvert` fold to `|` (Word shows the named forms as text).
-  - Bold font commands (`\mathbf`/`\boldsymbol`) are dropped to plain letters,
-    because old Word cannot render a bold run together with `\Vert`; the double
-    bar is kept in preference to the (cosmetic) bold.
   - Redundant grouping braces (e.g. a stray `{}` inside `\left|...\right|`) are
     removed, which is what lets such fractions render — all without breaking a
     command/letter boundary.

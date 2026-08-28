@@ -211,25 +211,28 @@ class WordNormalizerTests(unittest.TestCase):
     def test_prime_becomes_apostrophe(self) -> None:
         self.assertEqual(_word_latex(r"x^{\prime\prime}+y^{\prime}"), "x''+y'")
 
-    def test_single_bar_is_kept_double_bar_becomes_Vert(self) -> None:
-        # Word renders | (abs) and the named \Vert (norm), but not the \| shorthand.
+    def test_single_bar_is_kept_double_bar_becomes_Vert_group(self) -> None:
+        # Word renders | (abs) and the named \Vert{} (norm), but not the \| shorthand.
         self.assertEqual(
             _word_latex(r"\left\|v\right\|+\left|x\right|"),
-            r"\left\Vert v\right\Vert+\left|x\right|",
+            r"\left\Vert{}v\right\Vert{}+\left|x\right|",
         )
-        self.assertEqual(_word_latex(r"\|x-y\|"), r"\Vert x-y\Vert")
+        self.assertEqual(_word_latex(r"\|x-y\|"), r"\Vert{}x-y\Vert{}")
 
     def test_lvert_family_folds_to_word_forms(self) -> None:
-        # Word leaves \lvert/\rvert as literal text, so fold to | (abs) and \Vert (norm).
+        # Word leaves \lvert/\rvert as literal text, so fold to | (abs) and \Vert{} (norm).
         self.assertEqual(_word_latex(r"\left\lvert x\right\rvert"), r"\left| x\right|")
-        self.assertEqual(_word_latex(r"\left\lVert v\right\rVert"), r"\left\Vert v\right\Vert")
+        self.assertEqual(_word_latex(r"\left\lVert v\right\rVert"), r"\left\Vert{} v\right\Vert{}")
 
-    def test_bold_font_commands_are_stripped(self) -> None:
-        # Old Word can't render \mathbf together with \Vert, so bold is dropped
-        # while the correct double bar is kept, with the command boundary intact.
-        self.assertEqual(_word_latex(r"\|\mathbf{x}-\mathbf{y}\|"), r"\Vert x-y\Vert")
-        self.assertEqual(_word_latex(r"|\mathbf{x}|"), r"|x|")
-        self.assertEqual(_word_latex(r"\boldsymbol{v}+\mathbf{A}b"), r"v+Ab")
+    def test_bold_is_kept_and_double_bar_uses_empty_group_boundary(self) -> None:
+        # The empty group after \Vert is the boundary Word needs, so \mathbf renders
+        # alongside the double bar instead of being dropped. Superscripts anchor too.
+        self.assertEqual(
+            _word_latex(r"\|\mathbf{x}-\mathbf{y}\|"),
+            r"\Vert{}\mathbf{x}-\mathbf{y}\Vert{}",
+        )
+        self.assertEqual(_word_latex(r"\|\mathbf{x}\|^{2}"), r"\Vert{}\mathbf{x}\Vert{}^{2}")
+        self.assertEqual(_word_latex(r"|\mathbf{x}|"), r"|\mathbf{x}|")
 
     def test_keeps_argument_braces(self) -> None:
         self.assertEqual(_word_latex(r"x^{a+b}+\frac{a+b}{c}"), r"x^{a+b}+\frac{a+b}{c}")

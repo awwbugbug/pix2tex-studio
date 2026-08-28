@@ -160,53 +160,27 @@ def _strip_redundant_groups(text: str) -> str:
     return "".join(out)
 
 
-def _strip_bold_font_commands(text: str) -> str:
-    """Unwrap bold math-font commands (``\\mathbf{x}`` -> ``x``).
-
-    Older Word cannot render a bold font run and the ``\\Vert`` norm delimiter in
-    the same expression (the combination corrupts to garbage), so for the Word
-    subset bold is dropped and the correct double bar is kept. A space is inserted
-    when the command was glued to a preceding command name so the boundary stays
-    intact (``\\Vert\\mathbf{x}`` -> ``\\Vert x``, not ``\\Vertx``).
-    """
-    pattern = re.compile(r"\\(?:mathbf|boldsymbol|bm|pmb)\s*\{")
-    while True:
-        m = pattern.search(text)
-        if not m:
-            break
-        start, brace = m.start(), m.end() - 1
-        depth, j = 1, brace + 1
-        while j < len(text) and depth:
-            depth += (text[j] == "{") - (text[j] == "}")
-            j += 1
-        if depth:  # unbalanced: leave the rest untouched
-            break
-        inner = text[brace + 1 : j - 1]
-        prefix = text[:start]
-        sep = " " if prefix[-1:].isalpha() else ""
-        text = prefix + sep + inner + text[j:]
-    return text
-
-
 def _word_latex(latex: str) -> str:
     """Constrain the output toward Microsoft Word's supported LaTeX subset.
 
     Beyond the shared cleanup this applies the render-relevant, string-safe rules:
-    Unicode folding (in ``_clean_latex``), ``\\prime`` to ``'``, every double-bar
-    form folded to the named ``\\Vert`` (Word renders ``\\Vert`` but not the ``\\|``
-    shorthand) and the ``\\lvert`` family folded to the plain ``|`` (Word leaves
-    ``\\lvert``/``\\rvert`` as literal text), bold font commands dropped (Word
-    cannot render bold together with ``\\Vert``), and removal of redundant grouping
-    braces (Word rejects a stray group inside ``\\left|...\\right|``).
+    Unicode folding (in ``_clean_latex``), ``\\prime`` to ``'``, the ``\\lvert``
+    family folded to the plain ``|`` (Word shows the named ``\\lvert``/``\\rvert``
+    as literal text), removal of redundant grouping braces (Word rejects a stray
+    group inside ``\\left|...\\right|``), and every double-bar form folded to the
+    named ``\\Vert{}`` — Word renders the named command, not the ``\\|`` shorthand,
+    and the trailing empty group is the boundary Word's LaTeX->OMML converter
+    needs: it terminates the command so an adjacent bold run (``\\mathbf``) and a
+    following ``^`` superscript both parse and render (``\\Vert{}\\mathbf{x}``,
+    ``\\Vert{}^2``). A space does not work as this boundary; ``{}`` does, so bold
+    is kept rather than dropped.
     """
     text = _clean_latex(latex)
     text = re.sub(r"\^\{(?:\\prime)+\}", lambda m: "'" * m.group(0).count("prime"), text)
     text = text.replace("\\prime", "'")
-    text = re.sub(r"\\lVert|\\rVert|\\\|", r"\\Vert", text)
     text = re.sub(r"\\lvert|\\rvert", "|", text)
-    text = _strip_bold_font_commands(text)
-    text = re.sub(r"\\Vert(?=[A-Za-z])", r"\\Vert ", text)  # keep the command boundary
-    text = _strip_redundant_groups(text)
+    text = _strip_redundant_groups(text)  # before adding \Vert{}, so its group survives
+    text = re.sub(r"\\lVert|\\rVert|\\\|", r"\\Vert{}", text)
     return text.strip()
 
 
